@@ -27,3 +27,4 @@ export const supabasePlaceholder = {
 };
 
 export default supabasePlaceholder;
+

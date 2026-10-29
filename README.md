@@ -23,3 +23,4 @@ npm run dev
 ```
 
 Next milestone in roadmap: **Milestone 2: Home Page & Landing Experience**.
+
