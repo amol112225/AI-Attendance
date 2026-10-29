@@ -17,10 +17,12 @@ frontend/
 │   │   │   ├── Container.jsx & Container.css
 │   │   │   ├── EmptyState.jsx & EmptyState.css
 │   │   │   ├── ErrorMessage.jsx & ErrorMessage.css
+│   │   │   ├── Footer.jsx & Footer.css
 │   │   │   ├── LoadingIndicator.jsx & LoadingIndicator.css
 │   │   │   ├── Navbar.jsx & Navbar.css
 │   │   │   └── index.js
 │   │   └── home/           # Homepage feature sections
+│   │       ├── CtaSection.jsx & CtaSection.css
 │   │       ├── FeaturesSection.jsx & FeaturesSection.css
 │   │       └── HowItWorksSection.jsx & HowItWorksSection.css
 │   ├── hooks/              # Custom reusable hooks (e.g., useReducedMotion)

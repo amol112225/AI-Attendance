@@ -1,10 +1,12 @@
 /**
  * AttendAI Home Page
- * Milestones 3, 4 & 5: Hero Section, Features Section & How It Works Section
+ * Milestones 3, 4, 5 & 6: Hero, Features, How It Works & Final CTA Section
  *
- * Implements the hero section with a two-column responsive layout,
- * accessible action triggers, core capabilities FeaturesSection,
- * and the 4-step HowItWorksSection.
+ * Implements the complete public homepage structure:
+ * 1. Hero Section
+ * 2. Features Section (Core Capabilities)
+ * 3. How It Works Section (4-Step Workflow)
+ * 4. Final CTA Section
  */
 
 import React from 'react';
@@ -21,6 +23,7 @@ import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HowItWorksSection } from '../components/home/HowItWorksSection';
+import { CtaSection } from '../components/home/CtaSection';
 import './HomePage.css';
 
 // Sample fictional rows demonstrating the multi-modal attendance verification interface
@@ -80,6 +83,7 @@ export function HomePage() {
 
   return (
     <div className="home-page">
+      {/* Milestone 3: Hero Section */}
       <section className="hero-section" aria-labelledby="hero-heading">
         <Container size="xl">
           <div className="hero-grid">
@@ -205,6 +209,9 @@ export function HomePage() {
 
       {/* Milestone 5: How It Works Section */}
       <HowItWorksSection />
+
+      {/* Milestone 6: Final CTA Section */}
+      <CtaSection />
     </div>
   );
 }

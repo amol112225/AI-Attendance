@@ -4,3 +4,4 @@ export { LoadingIndicator } from './LoadingIndicator';
 export { ErrorMessage } from './ErrorMessage';
 export { EmptyState } from './EmptyState';
 export { Navbar } from './Navbar';
+export { Footer } from './Footer';

@@ -2,7 +2,8 @@
  * AttendAI Foundation & Milestones Verification Test Suite
  *
  * Lightweight verification script ensuring architectural constraints,
- * safe configurations, routing, navbar, hero section, features section, and how-it-works section requirements.
+ * safe configurations, routing, navbar, hero section, features section,
+ * how-it-works section, CTA section, and footer requirements.
  */
 
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-console.log('--- AttendAI Verification Suite (Milestones 1, 2, 3, 4 & 5) ---');
+console.log('--- AttendAI Verification Suite (Milestones 1 to 6) ---');
 
 // 1. Verify package.json dependencies
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
@@ -67,7 +68,7 @@ assert.ok(routesContent.includes("ROOT: '/'"), 'ROOT route missing');
 assert.ok(routesContent.includes("NOT_FOUND: '*'"), 'NOT_FOUND route missing');
 console.log('✔ Routing foundation: Declarative route constants configured');
 
-// 5. Verify Core Shared Components (including Navbar)
+// 5. Verify Core Shared Components (including Navbar & Footer)
 const commonComponents = [
   'Button.jsx',
   'Button.css',
@@ -81,13 +82,15 @@ const commonComponents = [
   'EmptyState.css',
   'Navbar.jsx',
   'Navbar.css',
+  'Footer.jsx',
+  'Footer.css',
   'index.js',
 ];
 for (const file of commonComponents) {
   const filePath = path.join(rootDir, 'src', 'components', 'common', file);
   assert.ok(fs.existsSync(filePath), `Required common component file missing: ${file}`);
 }
-console.log('✔ Reusable components: All foundation components and Navbar present');
+console.log('✔ Reusable components: All foundation components, Navbar, and Footer present');
 
 // 6. Verify Design System CSS tokens
 const varsPath = path.join(rootDir, 'src', 'styles', 'variables.css');
@@ -271,4 +274,45 @@ assert.ok(normalizedHowItWorksText.includes('04'), 'Step number 04 missing');
 assert.ok(homePageJsxContent.includes('<HowItWorksSection'), 'HomePage must render HowItWorksSection');
 console.log('✔ How It Works section: All Milestone 5 workflow and layout requirements verified');
 
-console.log('--- All Milestone 1, 2, 3, 4 & 5 verification tests passed! ---');
+// 12. Verify Final CTA & Footer (Milestone 6)
+const ctaSectionJsxPath = path.join(rootDir, 'src', 'components', 'home', 'CtaSection.jsx');
+assert.ok(fs.existsSync(ctaSectionJsxPath), 'src/components/home/CtaSection.jsx must exist');
+const ctaSectionJsxContent = fs.readFileSync(ctaSectionJsxPath, 'utf8');
+const normalizedCtaText = ctaSectionJsxContent.replace(/\s+/g, ' ');
+
+const footerJsxPath = path.join(rootDir, 'src', 'components', 'common', 'Footer.jsx');
+assert.ok(fs.existsSync(footerJsxPath), 'src/components/common/Footer.jsx must exist');
+const footerJsxContent = fs.readFileSync(footerJsxPath, 'utf8');
+const normalizedFooterText = footerJsxContent.replace(/\s+/g, ' ');
+
+// CTA Content
+assert.ok(ctaSectionJsxContent.includes('id="get-started"'), 'CtaSection must have id="get-started"');
+assert.ok(normalizedCtaText.includes('READY TO SIMPLIFY ATTENDANCE?'), 'CTA eyebrow missing');
+assert.ok(normalizedCtaText.includes('A smarter way to manage attendance starts here.'), 'CTA heading missing');
+assert.ok(
+  normalizedCtaText.includes('Bring face verification, voice verification, and teacher-reviewed attendance into one streamlined workflow.'),
+  'CTA description missing'
+);
+assert.ok(normalizedCtaText.includes('Get Started'), 'CTA button missing');
+
+// Footer Content
+assert.ok(normalizedFooterText.includes('AttendAI'), 'Footer brand missing');
+assert.ok(
+  normalizedFooterText.includes('AI-assisted attendance with face verification, voice verification, and teacher oversight.'),
+  'Footer description missing'
+);
+assert.ok(normalizedFooterText.includes('Home'), 'Footer Home link missing');
+assert.ok(normalizedFooterText.includes('Features'), 'Footer Features link missing');
+assert.ok(normalizedFooterText.includes('How It Works'), 'Footer How It Works link missing');
+assert.ok(
+  normalizedFooterText.includes('Verification results require appropriate review.'),
+  'Footer review disclaimer missing'
+);
+assert.ok(normalizedFooterText.includes('AttendAI. All rights reserved.'), 'Footer copyright line missing');
+
+// Integration
+assert.ok(homePageJsxContent.includes('<CtaSection'), 'HomePage must render CtaSection');
+assert.ok(pageShellJsxContent.includes('<Footer'), 'PageShell must render Footer');
+console.log('✔ Final CTA & Footer: All Milestone 6 closing conversion and footer requirements verified');
+
+console.log('--- All Milestone 1 to 6 verification tests passed! ---');
