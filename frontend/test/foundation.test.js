@@ -1,5 +1,5 @@
 /**
- * AttendAI Milestone 1 Foundation Verification Test
+ * AttendAI Milestone 1 & 2 Foundation & Navbar Verification Test
  *
  * Lightweight verification script ensuring architectural constraints,
  * safe configurations, and mandatory component exports.
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-console.log('--- AttendAI Foundation Verification Suite ---');
+console.log('--- AttendAI Foundation & Navbar Verification Suite ---');
 
 // 1. Verify package.json dependencies
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
@@ -67,7 +67,7 @@ assert.ok(routesContent.includes("ROOT: '/'"), 'ROOT route missing');
 assert.ok(routesContent.includes("NOT_FOUND: '*'"), 'NOT_FOUND route missing');
 console.log('✔ Routing foundation: Declarative route constants configured');
 
-// 5. Verify Core Shared Components
+// 5. Verify Core Shared Components (including Navbar)
 const commonComponents = [
   'Button.jsx',
   'Button.css',
@@ -79,13 +79,15 @@ const commonComponents = [
   'ErrorMessage.css',
   'EmptyState.jsx',
   'EmptyState.css',
+  'Navbar.jsx',
+  'Navbar.css',
   'index.js',
 ];
 for (const file of commonComponents) {
   const filePath = path.join(rootDir, 'src', 'components', 'common', file);
   assert.ok(fs.existsSync(filePath), `Required common component file missing: ${file}`);
 }
-console.log('✔ Reusable components: All 5 foundation components and styles present');
+console.log('✔ Reusable components: All foundation components and Navbar present');
 
 // 6. Verify Design System CSS tokens
 const varsPath = path.join(rootDir, 'src', 'styles', 'variables.css');
@@ -104,5 +106,34 @@ assert.ok(fs.existsSync(apiClientPath), 'src/services/apiClient.js must exist');
 assert.ok(fs.existsSync(supabaseClientPath), 'src/services/supabaseClient.js must exist');
 console.log('✔ Service layer: Architecture skeletons verified without premature network calls');
 
-console.log('--- All Milestone 1 verification tests passed! ---');
+// 8. Verify Navbar Specific Implementation & Requirements
+const navbarJsxPath = path.join(rootDir, 'src', 'components', 'common', 'Navbar.jsx');
+const navbarJsxContent = fs.readFileSync(navbarJsxPath, 'utf8');
+const navbarCssPath = path.join(rootDir, 'src', 'components', 'common', 'Navbar.css');
+const navbarCssContent = fs.readFileSync(navbarCssPath, 'utf8');
+const pageShellJsxPath = path.join(rootDir, 'src', 'layouts', 'PageShell.jsx');
+const pageShellJsxContent = fs.readFileSync(pageShellJsxPath, 'utf8');
 
+// Brand & Navigation links
+assert.ok(navbarJsxContent.includes('AttendAI'), 'Navbar brand text missing');
+assert.ok(navbarJsxContent.includes('Home'), 'Home navigation link missing');
+assert.ok(navbarJsxContent.includes('Features'), 'Features navigation link missing');
+assert.ok(navbarJsxContent.includes('How It Works'), 'How It Works navigation link missing');
+assert.ok(navbarJsxContent.includes('About'), 'About navigation link missing');
+
+// Action buttons
+assert.ok(navbarJsxContent.includes('Log In'), 'Log In button missing');
+assert.ok(navbarJsxContent.includes('Get Started'), 'Get Started button missing');
+
+// Accessibility & Mobile
+assert.ok(navbarJsxContent.includes('aria-expanded'), 'aria-expanded missing on menu toggle');
+assert.ok(navbarJsxContent.includes('aria-controls'), 'aria-controls missing on menu toggle');
+assert.ok(navbarCssContent.includes('@media (min-width: 768px)'), 'Desktop breakpoint missing in Navbar.css');
+assert.ok(navbarCssContent.includes('.navbar__mobile-overlay'), 'Mobile overlay missing in Navbar.css');
+
+// Integration in PageShell
+assert.ok(pageShellJsxContent.includes('<Navbar'), 'PageShell must render Navbar');
+
+console.log('✔ Navbar implementation: All Milestone 2 requirements verified');
+
+console.log('--- All Milestone 1 & 2 verification tests passed! ---');
