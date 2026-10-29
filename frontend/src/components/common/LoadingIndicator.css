@@ -1,0 +1,58 @@
+/**
+ * LoadingIndicator Component Styles
+ */
+
+.loading-indicator {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.loading-indicator--centered {
+  min-height: 200px;
+  width: 100%;
+}
+
+.loading-indicator__spinner {
+  border-radius: var(--radius-full);
+  border-style: solid;
+  border-color: var(--color-brand-violet-subtle);
+  border-top-color: var(--color-brand-cyan);
+  border-right-color: var(--color-brand-violet);
+  animation: loading-spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.loading-indicator--sm .loading-indicator__spinner {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+.loading-indicator--md .loading-indicator__spinner {
+  width: 36px;
+  height: 36px;
+  border-width: 3px;
+}
+
+.loading-indicator--lg .loading-indicator__spinner {
+  width: 52px;
+  height: 52px;
+  border-width: 4px;
+}
+
+.loading-indicator__text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+@keyframes loading-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
