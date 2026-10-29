@@ -12,13 +12,16 @@ frontend/
 ├── src/
 │   ├── assets/             # Bundled static media
 │   ├── components/
-│   │   └── common/         # Core reusable shared components
-│   │       ├── Button.jsx & Button.css
-│   │       ├── Container.jsx & Container.css
-│   │       ├── EmptyState.jsx & EmptyState.css
-│   │       ├── ErrorMessage.jsx & ErrorMessage.css
-│   │       ├── LoadingIndicator.jsx & LoadingIndicator.css
-│   │       └── index.js
+│   │   ├── common/         # Core reusable shared components
+│   │   │   ├── Button.jsx & Button.css
+│   │   │   ├── Container.jsx & Container.css
+│   │   │   ├── EmptyState.jsx & EmptyState.css
+│   │   │   ├── ErrorMessage.jsx & ErrorMessage.css
+│   │   │   ├── LoadingIndicator.jsx & LoadingIndicator.css
+│   │   │   ├── Navbar.jsx & Navbar.css
+│   │   │   └── index.js
+│   │   └── home/           # Homepage feature sections
+│   │       └── FeaturesSection.jsx & FeaturesSection.css
 │   ├── hooks/              # Custom reusable hooks (e.g., useReducedMotion)
 │   ├── layouts/            # Foundational layout wrappers
 │   │   ├── PageShell.jsx & PageShell.css

@@ -2,7 +2,7 @@
  * AttendAI Foundation & Milestones Verification Test Suite
  *
  * Lightweight verification script ensuring architectural constraints,
- * safe configurations, routing, navbar, and hero section requirements.
+ * safe configurations, routing, navbar, hero section, and features section requirements.
  */
 
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-console.log('--- AttendAI Verification Suite (Milestones 1, 2 & 3) ---');
+console.log('--- AttendAI Verification Suite (Milestones 1, 2, 3 & 4) ---');
 
 // 1. Verify package.json dependencies
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
@@ -173,7 +173,53 @@ assert.ok(normalizedHomePageText.includes('Demo Preview') || normalizedHomePageT
 
 // Responsive CSS
 assert.ok(homePageCssContent.includes('@media (min-width: 992px)'), 'Desktop two-column layout breakpoint missing');
-
 console.log('✔ Hero section: All Milestone 3 content and visual preview requirements verified');
 
-console.log('--- All Milestone 1, 2 & 3 verification tests passed! ---');
+// 10. Verify Features Section (Milestone 4)
+const featuresSectionJsxPath = path.join(rootDir, 'src', 'components', 'home', 'FeaturesSection.jsx');
+assert.ok(fs.existsSync(featuresSectionJsxPath), 'src/components/home/FeaturesSection.jsx must exist');
+const featuresSectionJsxContent = fs.readFileSync(featuresSectionJsxPath, 'utf8');
+const normalizedFeaturesText = featuresSectionJsxContent.replace(/\s+/g, ' ');
+
+const featuresSectionCssPath = path.join(rootDir, 'src', 'components', 'home', 'FeaturesSection.css');
+assert.ok(fs.existsSync(featuresSectionCssPath), 'src/components/home/FeaturesSection.css must exist');
+
+// Section ID & Headers
+assert.ok(featuresSectionJsxContent.includes('id="features"'), 'FeaturesSection must have id="features"');
+assert.ok(normalizedFeaturesText.includes('CORE CAPABILITIES'), 'Features eyebrow missing');
+assert.ok(normalizedFeaturesText.includes('Attendance made smarter.'), 'Features heading missing');
+assert.ok(
+  normalizedFeaturesText.includes('Bring face recognition, voice recognition, and teacher oversight together in one attendance workflow.'),
+  'Features supporting description missing'
+);
+
+// Card 1: Face Recognition
+assert.ok(normalizedFeaturesText.includes('Face Recognition'), 'Card 1 title missing');
+assert.ok(normalizedFeaturesText.includes('FACE VERIFICATION'), 'Card 1 label missing');
+assert.ok(
+  normalizedFeaturesText.includes('Use face-based verification to help identify students during an attendance session.'),
+  'Card 1 description missing'
+);
+
+// Card 2: Voice Recognition
+assert.ok(normalizedFeaturesText.includes('Voice Recognition'), 'Card 2 title missing');
+assert.ok(normalizedFeaturesText.includes('VOICE VERIFICATION'), 'Card 2 label missing');
+assert.ok(
+  normalizedFeaturesText.includes('Use voice-based verification as another way to support the attendance process.'),
+  'Card 2 description missing'
+);
+
+// Card 3: Teacher Review
+assert.ok(normalizedFeaturesText.includes('Teacher Review'), 'Card 3 title missing');
+assert.ok(normalizedFeaturesText.includes('HUMAN OVERSIGHT'), 'Card 3 label missing');
+assert.ok(
+  normalizedFeaturesText.includes('Let teachers review uncertain verification results and finalize attendance records.'),
+  'Card 3 description missing'
+);
+
+// Integration in HomePage
+assert.ok(homePageJsxContent.includes('<FeaturesSection'), 'HomePage must render FeaturesSection');
+
+console.log('✔ Features section: All Milestone 4 core capabilities and layout requirements verified');
+
+console.log('--- All Milestone 1, 2, 3 & 4 verification tests passed! ---');
