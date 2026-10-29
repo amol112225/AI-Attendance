@@ -11,7 +11,7 @@ import { LoadingIndicator } from '../components/common/LoadingIndicator';
 import { ROUTES } from './routes';
 
 // Code-split pages using React.lazy to maintain minimal initial bundle size
-const PlaceholderPage = lazy(() => import('../pages/PlaceholderPage'));
+const HomePage = lazy(() => import('../pages/HomePage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 export function AppRoutes() {
@@ -22,10 +22,10 @@ export function AppRoutes() {
       }
     >
       <Routes>
-        {/* Milestone 1: Minimal root development placeholder */}
-        <Route path={ROUTES.ROOT} element={<PlaceholderPage />} />
+        {/* Milestone 3: Home Page with Hero Section */}
+        <Route path={ROUTES.ROOT} element={<HomePage />} />
 
-        {/* Milestone 1: Reusable 404 Catch-All Page */}
+        {/* Catch-All 404 Page */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
       </Routes>
     </Suspense>

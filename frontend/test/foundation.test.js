@@ -1,8 +1,8 @@
 /**
- * AttendAI Milestone 1 & 2 Foundation & Navbar Verification Test
+ * AttendAI Foundation & Milestones Verification Test Suite
  *
  * Lightweight verification script ensuring architectural constraints,
- * safe configurations, and mandatory component exports.
+ * safe configurations, routing, navbar, and hero section requirements.
  */
 
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-console.log('--- AttendAI Foundation & Navbar Verification Suite ---');
+console.log('--- AttendAI Verification Suite (Milestones 1, 2 & 3) ---');
 
 // 1. Verify package.json dependencies
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
@@ -133,7 +133,47 @@ assert.ok(navbarCssContent.includes('.navbar__mobile-overlay'), 'Mobile overlay 
 
 // Integration in PageShell
 assert.ok(pageShellJsxContent.includes('<Navbar'), 'PageShell must render Navbar');
-
 console.log('✔ Navbar implementation: All Milestone 2 requirements verified');
 
-console.log('--- All Milestone 1 & 2 verification tests passed! ---');
+// 9. Verify Home Page Hero Section (Milestone 3)
+const homePageJsxPath = path.join(rootDir, 'src', 'pages', 'HomePage.jsx');
+assert.ok(fs.existsSync(homePageJsxPath), 'src/pages/HomePage.jsx must exist');
+const homePageJsxContent = fs.readFileSync(homePageJsxPath, 'utf8');
+const normalizedHomePageText = homePageJsxContent.replace(/\s+/g, ' ');
+
+const homePageCssPath = path.join(rootDir, 'src', 'pages', 'HomePage.css');
+assert.ok(fs.existsSync(homePageCssPath), 'src/pages/HomePage.css must exist');
+const homePageCssContent = fs.readFileSync(homePageCssPath, 'utf8');
+
+const appRoutesPath = path.join(rootDir, 'src', 'routes', 'AppRoutes.jsx');
+const appRoutesContent = fs.readFileSync(appRoutesPath, 'utf8');
+
+// AppRoutes must lazy load HomePage
+assert.ok(appRoutesContent.includes("import('../pages/HomePage')"), 'AppRoutes must load HomePage');
+assert.ok(!appRoutesContent.includes('PlaceholderPage'), 'PlaceholderPage must be removed from AppRoutes');
+
+// Required Copy
+assert.ok(normalizedHomePageText.includes('SMART ATTENDANCE. SIMPLIFIED.'), 'Hero eyebrow missing');
+assert.ok(normalizedHomePageText.includes('Attendance, Reimagined'), 'Hero title missing');
+assert.ok(normalizedHomePageText.includes('with AI.'), 'Hero title AI emphasis missing');
+assert.ok(
+  normalizedHomePageText.includes('A smarter attendance platform combining face and voice recognition with teacher-reviewed records for a more reliable attendance workflow.'),
+  'Hero supporting description missing or modified'
+);
+assert.ok(normalizedHomePageText.includes('Get Started'), 'Get Started primary action missing');
+assert.ok(normalizedHomePageText.includes('Explore Features'), 'Explore Features secondary action missing');
+
+// Visual Attendance Preview
+assert.ok(normalizedHomePageText.includes('Present'), 'Present status missing in demo rows');
+assert.ok(normalizedHomePageText.includes('Review'), 'Review status missing in demo rows');
+assert.ok(normalizedHomePageText.includes('Pending'), 'Pending status missing in demo rows');
+assert.ok(normalizedHomePageText.includes('Face AI'), 'Face AI modality hint missing');
+assert.ok(normalizedHomePageText.includes('Voice AI'), 'Voice AI modality hint missing');
+assert.ok(normalizedHomePageText.includes('Demo Preview') || normalizedHomePageText.includes('demonstration data'), 'Demo disclaimer missing');
+
+// Responsive CSS
+assert.ok(homePageCssContent.includes('@media (min-width: 992px)'), 'Desktop two-column layout breakpoint missing');
+
+console.log('✔ Hero section: All Milestone 3 content and visual preview requirements verified');
+
+console.log('--- All Milestone 1, 2 & 3 verification tests passed! ---');

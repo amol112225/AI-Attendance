@@ -23,8 +23,8 @@ frontend/
 │   ├── layouts/            # Foundational layout wrappers
 │   │   ├── PageShell.jsx & PageShell.css
 │   ├── pages/              # Page views (code-split)
-│   │   ├── NotFoundPage.jsx & NotFoundPage.css
-│   │   └── PlaceholderPage.jsx & PlaceholderPage.css
+│   │   ├── HomePage.jsx & HomePage.css
+│   │   └── NotFoundPage.jsx & NotFoundPage.css
 │   ├── routes/             # Declarative React Router setup
 │   │   ├── routes.js       # Route path registry
 │   │   └── AppRoutes.jsx   # Suspense & lazy route config
