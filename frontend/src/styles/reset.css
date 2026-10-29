@@ -16,6 +16,13 @@
 html {
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
@@ -61,4 +68,3 @@ ul,
 ol {
   list-style: none;
 }
-

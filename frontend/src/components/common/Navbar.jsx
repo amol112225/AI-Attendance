@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Cpu, Menu, X } from 'lucide-react';
 import { Container } from './Container';
 import { Button } from './Button';
@@ -26,6 +26,7 @@ export function Navbar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [prevPathname, setPrevPathname] = useState('/');
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Reset mobile menu if pathname changes during navigation
   if (location.pathname !== prevPathname) {
@@ -45,6 +46,17 @@ export function Navbar({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMobileMenuOpen]);
+
+  // Auto-close mobile drawer when window resizes to desktop breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -76,12 +88,19 @@ export function Navbar({
     }
 
     if (link.href.startsWith('#')) {
+      if (location.pathname !== '/') {
+        // Navigate back to home route with target hash
+        setIsMobileMenuOpen(false);
+        navigate('/' + link.href);
+        return;
+      }
+
       const targetElement = document.getElementById(link.id);
       if (targetElement) {
         e.preventDefault();
         targetElement.scrollIntoView({ behavior: 'smooth' });
       } else {
-        // Section not yet implemented in current milestone.
+        // Section not yet implemented in current milestone (e.g. #about).
         // Prevent jarring URL jump or broken scrolling.
         e.preventDefault();
       }

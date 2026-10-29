@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Cpu } from 'lucide-react';
 import { Container } from './Container';
 import './Footer.css';
@@ -22,6 +22,7 @@ const FOOTER_LINKS = [
 
 export function Footer() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLinkClick = (e, link) => {
     if (link.href === '/') {
@@ -33,12 +34,16 @@ export function Footer() {
     }
 
     if (link.href.startsWith('#')) {
+      if (location.pathname !== '/') {
+        e.preventDefault();
+        navigate('/' + link.href);
+        return;
+      }
+
       const targetElement = document.getElementById(link.id);
       if (targetElement) {
         e.preventDefault();
         targetElement.scrollIntoView({ behavior: 'smooth' });
-      } else if (location.pathname !== '/') {
-        // If on another route (e.g. 404), allow default navigation back to home with hash
       } else {
         e.preventDefault();
       }
@@ -120,3 +125,4 @@ export function Footer() {
 }
 
 export default Footer;
+

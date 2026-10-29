@@ -9,7 +9,8 @@
  * 4. Final CTA Section
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   ScanFace,
   Mic,
@@ -67,6 +68,21 @@ const DEMO_ATTENDANCE_ROWS = [
 ];
 
 export function HomePage() {
+  const location = useLocation();
+
+  // Scroll to section when URL contains anchor hash (e.g., from direct entry or cross-route nav)
+  useEffect(() => {
+    if (location.hash) {
+      const targetId = location.hash.replace('#', '');
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        requestAnimationFrame(() => {
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
+    }
+  }, [location.hash]);
+
   const handleGetStarted = (e) => {
     e.preventDefault();
     // Milestone integration point: Authentication & Onboarding

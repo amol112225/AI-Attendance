@@ -315,4 +315,31 @@ assert.ok(homePageJsxContent.includes('<CtaSection'), 'HomePage must render CtaS
 assert.ok(pageShellJsxContent.includes('<Footer'), 'PageShell must render Footer');
 console.log('✔ Final CTA & Footer: All Milestone 6 closing conversion and footer requirements verified');
 
-console.log('--- All Milestone 1 to 6 verification tests passed! ---');
+// 13. Verify Responsive Polish & Accessibility (Milestone 7)
+const resetCssPath = path.join(rootDir, 'src', 'styles', 'reset.css');
+const resetCssContent = fs.readFileSync(resetCssPath, 'utf8');
+const ctaSectionCssPath = path.join(rootDir, 'src', 'components', 'home', 'CtaSection.css');
+assert.ok(fs.existsSync(ctaSectionCssPath), 'src/components/home/CtaSection.css must exist');
+const featuresSectionCssContent = fs.readFileSync(featuresSectionCssPath, 'utf8');
+const howItWorksSectionCssContent = fs.readFileSync(howItWorksSectionCssPath, 'utf8');
+const ctaSectionCssContent = fs.readFileSync(ctaSectionCssPath, 'utf8');
+
+// Smooth scrolling with accessibility preference protection
+assert.ok(resetCssContent.includes('scroll-behavior: smooth'), 'Smooth scrolling missing in reset.css');
+assert.ok(resetCssContent.includes('prefers-reduced-motion: reduce'), 'Reduced-motion protection missing in reset.css');
+
+// Anchor scroll-margin-top offset for fixed/sticky navbar
+assert.ok(featuresSectionCssContent.includes('scroll-margin-top'), 'scroll-margin-top missing in FeaturesSection.css');
+assert.ok(howItWorksSectionCssContent.includes('scroll-margin-top'), 'scroll-margin-top missing in HowItWorksSection.css');
+assert.ok(ctaSectionCssContent.includes('scroll-margin-top'), 'scroll-margin-top missing in CtaSection.css');
+
+// Mobile drawer resize handler & touch target accessibility
+assert.ok(navbarJsxContent.includes('resize'), 'Resize event listener missing in Navbar.jsx');
+assert.ok(navbarCssContent.includes('min-width: 40px') || navbarCssContent.includes('min-height: 40px'), 'Accessible touch target sizing missing in Navbar.css');
+
+// Small screen viewport adaptations in HomePage.css
+assert.ok(homePageCssContent.includes('max-width: 360px'), 'Small mobile viewport media query missing in HomePage.css');
+assert.ok(homePageCssContent.includes('overflow-wrap: break-word'), 'Heading overflow protection missing in HomePage.css');
+console.log('✔ Responsive polish & accessibility: All Milestone 7 safeguards verified');
+
+console.log('--- All Milestone 1 to 7 verification tests passed! ---');

@@ -8,6 +8,7 @@
   padding-bottom: var(--space-16);
   border-top: 1px solid var(--color-border-subtle);
   background-color: rgba(17, 24, 39, 0.45);
+  scroll-margin-top: calc(64px + var(--space-4));
   position: relative;
 }
 
@@ -48,6 +49,7 @@
   letter-spacing: -0.02em;
   color: var(--color-text-primary);
   margin-bottom: var(--space-3);
+  overflow-wrap: break-word;
 }
 
 .how-it-works-section__description {
@@ -87,11 +89,17 @@
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-xl);
-  padding: var(--space-6);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   position: relative;
   transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+@media (min-width: 480px) {
+  .step-card {
+    padding: var(--space-6);
+  }
 }
 
 .step-card:hover {
@@ -156,6 +164,7 @@
   color: var(--color-text-primary);
   margin-bottom: var(--space-2);
   letter-spacing: -0.01em;
+  overflow-wrap: break-word;
 }
 
 .step-card__description {
@@ -164,4 +173,3 @@
   line-height: var(--line-height-normal);
   flex-grow: 1;
 }
-
