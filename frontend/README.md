@@ -21,7 +21,8 @@ frontend/
 │   │   │   ├── Navbar.jsx & Navbar.css
 │   │   │   └── index.js
 │   │   └── home/           # Homepage feature sections
-│   │       └── FeaturesSection.jsx & FeaturesSection.css
+│   │       ├── FeaturesSection.jsx & FeaturesSection.css
+│   │       └── HowItWorksSection.jsx & HowItWorksSection.css
 │   ├── hooks/              # Custom reusable hooks (e.g., useReducedMotion)
 │   ├── layouts/            # Foundational layout wrappers
 │   │   ├── PageShell.jsx & PageShell.css

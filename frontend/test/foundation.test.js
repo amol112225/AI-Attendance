@@ -2,7 +2,7 @@
  * AttendAI Foundation & Milestones Verification Test Suite
  *
  * Lightweight verification script ensuring architectural constraints,
- * safe configurations, routing, navbar, hero section, and features section requirements.
+ * safe configurations, routing, navbar, hero section, features section, and how-it-works section requirements.
  */
 
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-console.log('--- AttendAI Verification Suite (Milestones 1, 2, 3 & 4) ---');
+console.log('--- AttendAI Verification Suite (Milestones 1, 2, 3, 4 & 5) ---');
 
 // 1. Verify package.json dependencies
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
@@ -219,7 +219,56 @@ assert.ok(
 
 // Integration in HomePage
 assert.ok(homePageJsxContent.includes('<FeaturesSection'), 'HomePage must render FeaturesSection');
-
 console.log('✔ Features section: All Milestone 4 core capabilities and layout requirements verified');
 
-console.log('--- All Milestone 1, 2, 3 & 4 verification tests passed! ---');
+// 11. Verify How It Works Section (Milestone 5)
+const howItWorksSectionJsxPath = path.join(rootDir, 'src', 'components', 'home', 'HowItWorksSection.jsx');
+assert.ok(fs.existsSync(howItWorksSectionJsxPath), 'src/components/home/HowItWorksSection.jsx must exist');
+const howItWorksSectionJsxContent = fs.readFileSync(howItWorksSectionJsxPath, 'utf8');
+const normalizedHowItWorksText = howItWorksSectionJsxContent.replace(/\s+/g, ' ');
+
+const howItWorksSectionCssPath = path.join(rootDir, 'src', 'components', 'home', 'HowItWorksSection.css');
+assert.ok(fs.existsSync(howItWorksSectionCssPath), 'src/components/home/HowItWorksSection.css must exist');
+
+// Section ID & Headers
+assert.ok(howItWorksSectionJsxContent.includes('id="how-it-works"'), 'HowItWorksSection must have id="how-it-works"');
+assert.ok(normalizedHowItWorksText.includes('SIMPLE WORKFLOW'), 'How It Works eyebrow missing');
+assert.ok(normalizedHowItWorksText.includes('From verification to attendance.'), 'How It Works heading missing');
+assert.ok(
+  normalizedHowItWorksText.includes('A clear, teacher-guided process designed to make attendance easier to manage.'),
+  'How It Works description missing'
+);
+
+// Steps Content
+assert.ok(normalizedHowItWorksText.includes('Start a Session'), 'Step 1 title missing');
+assert.ok(
+  normalizedHowItWorksText.includes('A teacher selects the class or subject and starts an attendance session.'),
+  'Step 1 description missing'
+);
+assert.ok(normalizedHowItWorksText.includes('Verify Students'), 'Step 2 title missing');
+assert.ok(
+  normalizedHowItWorksText.includes('Students can be checked using face recognition or voice recognition.'),
+  'Step 2 description missing'
+);
+assert.ok(normalizedHowItWorksText.includes('Review Results'), 'Step 3 title missing');
+assert.ok(
+  normalizedHowItWorksText.includes('The teacher reviews uncertain or unmatched verification results before making decisions.'),
+  'Step 3 description missing'
+);
+assert.ok(normalizedHowItWorksText.includes('Finalize Attendance'), 'Step 4 title missing');
+assert.ok(
+  normalizedHowItWorksText.includes('The teacher confirms the reviewed records to complete the attendance session.'),
+  'Step 4 description missing'
+);
+
+// Step Numbers
+assert.ok(normalizedHowItWorksText.includes('01'), 'Step number 01 missing');
+assert.ok(normalizedHowItWorksText.includes('02'), 'Step number 02 missing');
+assert.ok(normalizedHowItWorksText.includes('03'), 'Step number 03 missing');
+assert.ok(normalizedHowItWorksText.includes('04'), 'Step number 04 missing');
+
+// Integration in HomePage
+assert.ok(homePageJsxContent.includes('<HowItWorksSection'), 'HomePage must render HowItWorksSection');
+console.log('✔ How It Works section: All Milestone 5 workflow and layout requirements verified');
+
+console.log('--- All Milestone 1, 2, 3, 4 & 5 verification tests passed! ---');

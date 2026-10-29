@@ -1,9 +1,10 @@
 /**
  * AttendAI Home Page
- * Milestone 3 & 4: Hero Section & Features Section
+ * Milestones 3, 4 & 5: Hero Section, Features Section & How It Works Section
  *
  * Implements the hero section with a two-column responsive layout,
- * accessible action triggers, and the core capabilities FeaturesSection.
+ * accessible action triggers, core capabilities FeaturesSection,
+ * and the 4-step HowItWorksSection.
  */
 
 import React from 'react';
@@ -19,6 +20,7 @@ import {
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { FeaturesSection } from '../components/home/FeaturesSection';
+import { HowItWorksSection } from '../components/home/HowItWorksSection';
 import './HomePage.css';
 
 // Sample fictional rows demonstrating the multi-modal attendance verification interface
@@ -200,6 +202,9 @@ export function HomePage() {
 
       {/* Milestone 4: Features Section */}
       <FeaturesSection />
+
+      {/* Milestone 5: How It Works Section */}
+      <HowItWorksSection />
     </div>
   );
 }

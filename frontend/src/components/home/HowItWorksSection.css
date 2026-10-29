@@ -1,0 +1,166 @@
+/**
+ * AttendAI How It Works Section Styles
+ * Milestone 5: Homepage How It Works Section
+ */
+
+.how-it-works-section {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-16);
+  border-top: 1px solid var(--color-border-subtle);
+  background-color: rgba(17, 24, 39, 0.45);
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-section {
+    padding-top: var(--space-16);
+    padding-bottom: var(--space-20);
+  }
+}
+
+/* Section Header */
+.how-it-works-section__header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto var(--space-10);
+}
+
+@media (min-width: 768px) {
+  .how-it-works-section__header {
+    margin-bottom: var(--space-12);
+  }
+}
+
+.how-it-works-section__eyebrow {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-cyan);
+  margin-bottom: var(--space-2);
+}
+
+.how-it-works-section__title {
+  font-size: clamp(1.875rem, 3.5vw, 2.5rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-3);
+}
+
+.how-it-works-section__description {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Steps Sequence Grid */
+.steps-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .steps-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+@media (min-width: 1024px) {
+  .steps-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* Step Card */
+.step-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.step-card:hover {
+  border-color: var(--color-border-default);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-card:hover {
+    transform: none;
+  }
+}
+
+.step-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.step-card__number {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-brand-cyan);
+  background-color: var(--color-brand-cyan-subtle);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: var(--radius-full);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-card__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-lavender);
+}
+
+.step-card__step-tag {
+  font-family: var(--font-family-mono);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand-violet);
+  margin-bottom: var(--space-1);
+}
+
+.step-card__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.01em;
+}
+
+.step-card__description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  flex-grow: 1;
+}
