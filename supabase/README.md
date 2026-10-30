@@ -44,20 +44,35 @@ Row Level Security is enabled on `public.profiles`:
 
 ---
 
-## 4. How to Apply the Migration
+## 4. How to Apply the Migrations
 
 ### Option A: Using the Supabase Dashboard SQL Editor (Recommended for Cloud Projects)
 1. Log in to the [Supabase Dashboard](https://supabase.com/dashboard).
 2. Select your AttendAI project (`mcxrdvsejyragcjufhlx`).
 3. Click on the **SQL Editor** tab in the left navigation sidebar.
-4. Open or copy the entire contents of [`supabase/migrations/20261030000000_profiles_roles_rls.sql`](./migrations/20261030000000_profiles_roles_rls.sql).
-5. Paste the SQL into the editor and click **Run**.
+4. If you have not yet applied the initial migration, run:
+   [`supabase/migrations/20261030000000_profiles_roles_rls.sql`](./migrations/20261030000000_profiles_roles_rls.sql)
+5. To apply the non-recursive RLS policy update and privilege escalation trigger fix, run:
+   [`supabase/migrations/20261030010000_fix_profile_update_rls.sql`](./migrations/20261030010000_fix_profile_update_rls.sql)
 6. Ensure the message states `Success. No rows returned`.
 
 ### Option B: Using the Supabase CLI (Local Development)
 ```bash
 supabase db push
 ```
+
+---
+
+## 5. Security Test Suite
+
+We have provided a comprehensive SQL security verification suite in [`supabase/tests/security_verification.sql`](./tests/security_verification.sql).
+Run this script in the Supabase SQL Editor to test:
+- Schema and constraint validation
+- RLS policy structure
+- Trigger execution on user creation
+- Role escalation blocking
+- Self-approval blocking
+- Permitted name updates
 
 ---
 
@@ -128,3 +143,4 @@ const { error: approveError } = await supabase
 console.log('Approve tamper result:', approveError ? 'Blocked safely: ' + approveError.message : 'FAILED (tamper succeeded)');
 ```
 Both queries will fail with PostgreSQL RLS violation / permission denied exceptions.
+

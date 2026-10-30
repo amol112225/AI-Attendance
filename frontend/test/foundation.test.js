@@ -673,4 +673,23 @@ assert.ok(networkErrorProfile.error);
 
 console.log('✔ Database Profiles, Roles & RLS: Migration, automated trigger, RLS policies, authService, and AuthContext profile integration verified');
 
-console.log('--- All Milestone 1 to 8.5 verification tests passed! ---');
+// 18. Verify Security Audit: Non-Recursive UPDATE Policy & Security Test Suite
+const fixMigrationPath = path.join(rootDir, '..', 'supabase', 'migrations', '20261030010000_fix_profile_update_rls.sql');
+assert.ok(fs.existsSync(fixMigrationPath), 'Corrective migration 20261030010000_fix_profile_update_rls.sql must exist');
+const fixMigrationSql = fs.readFileSync(fixMigrationPath, 'utf8');
+
+// Ensure recursion was eliminated (no subqueries in executable statements)
+assert.ok(!fixMigrationSql.includes('AND role = (SELECT'), 'Recursive subquery found in corrective migration policy');
+assert.ok(fixMigrationSql.includes('DROP POLICY IF EXISTS "Users can update own profile name" ON public.profiles'), 'Drop old recursive policy statement missing');
+assert.ok(fixMigrationSql.includes('CREATE POLICY "Users can update own profile name"'), 'Clean UPDATE policy missing');
+assert.ok(fixMigrationSql.includes('GRANT UPDATE(full_name) ON public.profiles TO authenticated'), 'Column-level grant for full_name missing');
+assert.ok(fixMigrationSql.includes("current_user NOT IN ('postgres', 'supabase_admin')"), 'Administrative bypass/check missing in trigger');
+
+const securityTestSqlPath = path.join(rootDir, '..', 'supabase', 'tests', 'security_verification.sql');
+assert.ok(fs.existsSync(securityTestSqlPath), 'supabase/tests/security_verification.sql test suite must exist');
+const securityTestSql = fs.readFileSync(securityTestSqlPath, 'utf8');
+assert.ok(securityTestSql.includes('TEST 4: Automatic Profile Creation Simulation'), 'Trigger creation test missing in security_verification.sql');
+assert.ok(securityTestSql.includes('TEST 5: Role Escalation Prevention Simulation'), 'Escalation prevention test missing in security_verification.sql');
+console.log('✔ Security Audit: Non-recursive RLS policy, administrative boundary, and verification tests verified');
+
+console.log('--- All Milestone 1 to 8.5 Security Audit verification tests passed! ---');
