@@ -8,6 +8,9 @@ export const ROUTES = {
   // Milestone 8.3 & 8.4 (Auth):
   REGISTER: '/register',
   LOGIN: '/login',
+  // Milestone 8.9 (Password Recovery):
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
   // Milestone 8.7 (Teacher Registration & Request):
   TEACHER_REGISTER: '/register/teacher',
   TEACHER_LOGIN: '/login/teacher',

@@ -91,6 +91,25 @@
   color: var(--color-text-primary);
 }
 
+.login-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-forgot-link {
+  font-size: var(--font-size-xs);
+  color: var(--color-brand-cyan);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+.login-forgot-link:hover {
+  color: var(--color-brand-violet);
+  text-decoration: underline;
+}
+
 .login-input-wrapper {
   position: relative;
   display: flex;

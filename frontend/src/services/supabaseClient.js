@@ -52,6 +52,8 @@ if (validation.isValid) {
       signOut: unconfiguredError,
       getSession: unconfiguredError,
       getUser: unconfiguredError,
+      resetPasswordForEmail: unconfiguredError,
+      updateUser: unconfiguredError,
       onAuthStateChange: () => ({
         data: { subscription: { unsubscribe: () => {} } },
       }),

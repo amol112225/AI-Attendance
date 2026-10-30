@@ -31,6 +31,12 @@ export function formatAuthError(error) {
   if (message.includes('Password should be at least')) {
     return 'Password must be at least 6 characters long.';
   }
+  if (message.includes('otp_expired') || message.includes('token has expired') || message.includes('Email link is invalid')) {
+    return 'This password reset link is invalid or has expired. Please request a new link.';
+  }
+  if (message.includes('different from the old password')) {
+    return 'Please choose a new password that is different from your current one.';
+  }
   if (message.includes('rate limit') || error.status === 429) {
     return 'Too many login attempts. Please wait a few moments and try again.';
   }
@@ -490,6 +496,104 @@ export async function authenticateTeacher({ email, password }) {
 
 export const loginTeacher = authenticateTeacher;
 
+/**
+ * Request a password reset email for a user.
+ * Milestone 8.9: Forgot Password and Password Reset
+ *
+ * @param {string} email
+ * @param {string} [redirectTo] - Custom redirect URL (defaults to /reset-password)
+ * @returns {Promise<{data: Object|null, error: Error|null, message: string}>}
+ */
+export async function sendPasswordResetEmail(email, redirectTo) {
+  if (!isSupabaseConfigured()) {
+    return {
+      data: null,
+      error: new Error('Authentication service is currently unconfigured.'),
+      message: 'Authentication service is unconfigured.',
+    };
+  }
+
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return {
+      data: null,
+      error: new Error('Email address is required.'),
+      message: 'Email address is required.',
+    };
+  }
+
+  const defaultRedirect = typeof window !== 'undefined' && window.location?.origin
+    ? `${window.location.origin}/reset-password`
+    : '/reset-password';
+  const targetRedirect = redirectTo || defaultRedirect;
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: targetRedirect,
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error,
+      message: formatAuthError(error),
+    };
+  }
+
+  // Generic message: avoid leaking whether the account exists
+  return {
+    data,
+    error: null,
+    message: 'If an account exists with this email, you will receive password reset instructions shortly.',
+  };
+}
+
+export const resetPasswordForEmail = sendPasswordResetEmail;
+
+/**
+ * Update the authenticated user's password using an active recovery session.
+ * Milestone 8.9: Forgot Password and Password Reset
+ *
+ * @param {string} newPassword
+ * @returns {Promise<{data: Object|null, error: Error|null, message: string}>}
+ */
+export async function updateUserPassword(newPassword) {
+  if (!isSupabaseConfigured()) {
+    return {
+      data: null,
+      error: new Error('Authentication service is currently unconfigured.'),
+      message: 'Authentication service is unconfigured.',
+    };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return {
+      data: null,
+      error: new Error('Password must be at least 6 characters long.'),
+      message: 'Password must be at least 6 characters long.',
+    };
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error,
+      message: formatAuthError(error),
+    };
+  }
+
+  return {
+    data,
+    error: null,
+    message: 'Your password has been successfully updated.',
+  };
+}
+
+export const resetUserPassword = updateUserPassword;
+
 export const authService = {
   formatAuthError,
   registerUser,
@@ -499,6 +603,10 @@ export const authService = {
   loginUser,
   authenticateTeacher,
   loginTeacher,
+  sendPasswordResetEmail,
+  resetPasswordForEmail,
+  updateUserPassword,
+  resetUserPassword,
   TEACHER_LOGIN_OUTCOMES,
   logoutUser,
   getSession,

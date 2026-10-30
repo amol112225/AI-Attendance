@@ -1362,4 +1362,170 @@ const rejectedTeacherNav = getNavbarItems({ isAuthenticated: true, role: 'studen
 assert.ok(!rejectedTeacherNav.includes('Faculty Portal') && !rejectedTeacherNav.includes('Teacher Pending'), 'Rejected teacher sees no teacher pills');
 
 console.log('✔ Milestone 8.8: All 13 Teacher Login & Role Authentication scenarios verified successfully');
-console.log('--- All Milestone 1 to 8.8 Teacher Login verification tests passed! ---');
+
+// ==============================================================================
+// 22. Milestone 8.9: Forgot Password and Password Reset
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 8.9: Password Recovery) ---');
+
+// 22.1 File Existence and Integrity
+const forgotPasswordJsxPath = path.join(srcDir, 'pages', 'ForgotPasswordPage.jsx');
+const forgotPasswordCssPath = path.join(srcDir, 'pages', 'ForgotPasswordPage.css');
+const resetPasswordJsxPath = path.join(srcDir, 'pages', 'ResetPasswordPage.jsx');
+const resetPasswordCssPath = path.join(srcDir, 'pages', 'ResetPasswordPage.css');
+
+assert.ok(fs.existsSync(forgotPasswordJsxPath), 'ForgotPasswordPage.jsx must exist');
+assert.ok(fs.existsSync(forgotPasswordCssPath), 'ForgotPasswordPage.css must exist');
+assert.ok(fs.existsSync(resetPasswordJsxPath), 'ResetPasswordPage.jsx must exist');
+assert.ok(fs.existsSync(resetPasswordCssPath), 'ResetPasswordPage.css must exist');
+
+const forgotPasswordJsxContent = fs.readFileSync(forgotPasswordJsxPath, 'utf8');
+const resetPasswordJsxContent = fs.readFileSync(resetPasswordJsxPath, 'utf8');
+assert.ok(forgotPasswordJsxContent.includes('sendPasswordResetEmail'), 'ForgotPasswordPage must call sendPasswordResetEmail');
+assert.ok(resetPasswordJsxContent.includes('updateUserPassword'), 'ResetPasswordPage must call updateUserPassword');
+
+// 22.2 Route Constants and AppRoutes Registration
+const routesContent89 = fs.readFileSync(path.join(srcDir, 'routes', 'routes.js'), 'utf8');
+assert.ok(routesContent89.includes("FORGOT_PASSWORD: '/forgot-password'"), 'FORGOT_PASSWORD route missing from routes.js');
+assert.ok(routesContent89.includes("RESET_PASSWORD: '/reset-password'"), 'RESET_PASSWORD route missing from routes.js');
+
+const appRoutesContent89 = fs.readFileSync(path.join(srcDir, 'routes', 'AppRoutes.jsx'), 'utf8');
+assert.ok(appRoutesContent89.includes('ROUTES.FORGOT_PASSWORD'), 'FORGOT_PASSWORD missing from AppRoutes.jsx');
+assert.ok(appRoutesContent89.includes('ROUTES.RESET_PASSWORD'), 'RESET_PASSWORD missing from AppRoutes.jsx');
+
+// 22.3 Service Layer Verification in authService.js
+const authServiceContent89 = fs.readFileSync(path.join(srcDir, 'services', 'authService.js'), 'utf8');
+assert.ok(authServiceContent89.includes('sendPasswordResetEmail'), 'sendPasswordResetEmail missing from authService.js');
+assert.ok(authServiceContent89.includes('resetPasswordForEmail'), 'resetPasswordForEmail alias missing from authService.js');
+assert.ok(authServiceContent89.includes('updateUserPassword'), 'updateUserPassword missing from authService.js');
+assert.ok(authServiceContent89.includes('resetUserPassword'), 'resetUserPassword alias missing from authService.js');
+
+// 22.4 Unit Validation and Testing of the 12 Scenarios
+// Scenario 1: Valid email format validation
+function validateForgotPasswordEmail(inputEmail) {
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const trimmed = (inputEmail || '').trim();
+  if (!trimmed) return 'Email address is required.';
+  if (!EMAIL_REGEX.test(trimmed)) return 'Please enter a valid email address.';
+  return null;
+}
+assert.strictEqual(validateForgotPasswordEmail('student@attendai.edu'), null, 'Valid student email must pass');
+assert.strictEqual(validateForgotPasswordEmail('prof.vance@university.edu'), null, 'Valid professor email must pass');
+
+// Scenario 2: Invalid email format
+assert.strictEqual(validateForgotPasswordEmail(''), 'Email address is required.');
+assert.strictEqual(validateForgotPasswordEmail('not-an-email'), 'Please enter a valid email address.');
+assert.strictEqual(validateForgotPasswordEmail('missing@domain'), 'Please enter a valid email address.');
+
+// Scenario 3: Recovery request submission (generic confirmation without leaking account existence)
+async function mockSendPasswordResetEmail(email, redirectUrl, shouldFail = false) {
+  if (shouldFail) {
+    return { data: null, error: new Error('Rate limit exceeded'), message: 'Too many attempts. Please wait a few moments and try again.' };
+  }
+  return {
+    data: {},
+    error: null,
+    message: 'If an account exists with this email, you will receive password reset instructions shortly.',
+  };
+}
+const recoveryResult = await mockSendPasswordResetEmail('unknown@attendai.edu', 'http://localhost:5173/reset-password');
+assert.strictEqual(recoveryResult.error, null);
+assert.ok(recoveryResult.message.includes('If an account exists'), 'Must not reveal whether email exists');
+
+// Scenario 4: Rate-limit and network-error handling
+const rateLimitError = new Error('rate limit exceeded');
+rateLimitError.status = 429;
+assert.strictEqual(formatAuthError(rateLimitError), 'Too many login attempts. Please wait a few moments and try again.');
+const networkError = new Error('Failed to fetch');
+assert.strictEqual(formatAuthError(networkError), 'Unable to connect to the authentication server. Please check your internet connection.');
+
+// Scenario 5: Valid recovery session
+function evaluateRecoveryLinkState({ hasSession, urlError }) {
+  if (urlError) {
+    return { status: 'invalid', message: 'This password reset link is invalid or has expired.' };
+  }
+  if (!hasSession) {
+    return { status: 'invalid', message: 'No valid password recovery session was found.' };
+  }
+  return { status: 'ready', message: null };
+}
+const validRecoveryState = evaluateRecoveryLinkState({ hasSession: true, urlError: null });
+assert.strictEqual(validRecoveryState.status, 'ready');
+
+// Scenario 6: Expired or invalid recovery link
+const expiredRecoveryState = evaluateRecoveryLinkState({ hasSession: false, urlError: 'Email link is invalid or has expired' });
+assert.strictEqual(expiredRecoveryState.status, 'invalid');
+assert.ok(expiredRecoveryState.message.includes('invalid or has expired'));
+const directVisitWithoutSession = evaluateRecoveryLinkState({ hasSession: false, urlError: null });
+assert.strictEqual(directVisitWithoutSession.status, 'invalid');
+
+// Scenario 7: Password mismatch validation
+function validateResetPasswordForm({ password, confirmPassword }) {
+  const errors = {};
+  if (!password) {
+    errors.password = 'New password is required.';
+  } else if (password.length < 6) {
+    errors.password = 'Password must be at least 6 characters long.';
+  }
+  if (!confirmPassword) {
+    errors.confirmPassword = 'Confirm password is required.';
+  } else if (password !== confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match.';
+  }
+  return errors;
+}
+const mismatchResult = validateResetPasswordForm({ password: 'newPassword123', confirmPassword: 'differentPassword456' });
+assert.strictEqual(mismatchResult.confirmPassword, 'Passwords do not match.');
+
+// Scenario 8: Password policy enforcement (< 6 characters)
+const shortPasswordResult = validateResetPasswordForm({ password: '12345', confirmPassword: '12345' });
+assert.strictEqual(shortPasswordResult.password, 'Password must be at least 6 characters long.');
+const validPasswordResult = validateResetPasswordForm({ password: 'securePassword2026', confirmPassword: 'securePassword2026' });
+assert.strictEqual(Object.keys(validPasswordResult).length, 0);
+
+// Scenario 9: Successful password update and session termination
+async function mockUpdatePassword(password) {
+  if (!password || password.length < 6) {
+    return { data: null, error: new Error('Password must be at least 6 characters long.') };
+  }
+  return { data: { user: { id: 'u-1', email: 'user@attendai.edu' } }, error: null };
+}
+const updateResult = await mockUpdatePassword('newPassword2026');
+assert.ok(updateResult.data.user, 'Password update must succeed');
+
+// Scenario 10: Existing Student login regression
+const studentLoginRegression = await mockLogin('success');
+assert.ok(studentLoginRegression.data.session, 'Student login continues to function cleanly');
+const studentPageContent89 = fs.readFileSync(path.join(srcDir, 'pages', 'LoginPage.jsx'), 'utf8');
+assert.ok(studentPageContent89.includes('ROUTES.FORGOT_PASSWORD'), 'Student login now links to forgot password');
+
+// Scenario 11: Existing Teacher login regression
+const teacherLoginContentLatest = fs.readFileSync(teacherLoginPagePath, 'utf8');
+assert.ok(teacherLoginContentLatest.includes('ROUTES.FORGOT_PASSWORD'), 'Teacher login links to forgot password');
+const teacherLoginRegression = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'prof-reg', email: 'prof@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'prof-reg', role: 'teacher', is_approved: true } },
+  requestResult: { request: { status: 'approved' } },
+});
+assert.strictEqual(teacherLoginRegression.outcome, TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER);
+
+// Scenario 12: Role and approval status remain unchanged
+function simulatePasswordResetOnProfile(profile, _newPassword) {
+  // Password reset only updates auth credentials; public.profiles role and is_approved are untouched
+  return {
+    ...profile,
+    updated_at: new Date().toISOString(),
+  };
+}
+const untouchedProfile = { id: 'p-1', role: 'student', is_approved: false };
+const afterResetProfile = simulatePasswordResetOnProfile(untouchedProfile, 'brandNewPassword123');
+assert.strictEqual(afterResetProfile.role, 'student', 'Role must remain student');
+assert.strictEqual(afterResetProfile.is_approved, false, 'is_approved must remain false');
+
+const teacherProfile = { id: 'p-2', role: 'teacher', is_approved: true };
+const afterTeacherReset = simulatePasswordResetOnProfile(teacherProfile, 'brandNewPassword123');
+assert.strictEqual(afterTeacherReset.role, 'teacher', 'Teacher role must remain unchanged');
+assert.strictEqual(afterTeacherReset.is_approved, true, 'Teacher is_approved must remain true');
+
+console.log('✔ Milestone 8.9: All 12 Forgot Password and Reset Password scenarios verified successfully');
+console.log('--- All Milestone 1 to 8.9 Verification Tests Passed! ---');

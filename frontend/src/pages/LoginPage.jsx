@@ -197,9 +197,14 @@ export function LoginPage() {
 
                 {/* Password */}
                 <div className="login-field">
-                  <label htmlFor="login-password" className="login-label">
-                    Password
-                  </label>
+                  <div className="login-label-row">
+                    <label htmlFor="login-password" className="login-label">
+                      Password
+                    </label>
+                    <Link to={ROUTES.FORGOT_PASSWORD} className="login-forgot-link">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <div className="login-input-wrapper">
                     <input
                       id="login-password"

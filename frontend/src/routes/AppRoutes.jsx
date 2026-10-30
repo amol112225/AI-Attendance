@@ -16,6 +16,8 @@ const RegisterPage = lazy(() => import('../pages/RegisterPage'));
 const TeacherRegisterPage = lazy(() => import('../pages/TeacherRegisterPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage'));
 const TeacherLoginPage = lazy(() => import('../pages/TeacherLoginPage'));
+const ForgotPasswordPage = lazy(() => import('../pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage'));
 const TeacherStatusPage = lazy(() => import('../pages/TeacherStatusPage'));
 const UnauthorizedPage = lazy(() => import('../pages/UnauthorizedPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
@@ -40,6 +42,10 @@ export function AppRoutes() {
 
         {/* Milestone 8.4: AttendAI Student Login */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+
+        {/* Milestone 8.9: AttendAI Forgot Password & Reset Password */}
+        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
 
         {/* Milestone 8.7: AttendAI Teacher Login */}
         <Route path={ROUTES.TEACHER_LOGIN} element={<TeacherLoginPage />} />
