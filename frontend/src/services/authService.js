@@ -43,6 +43,16 @@ export function formatAuthError(error) {
   if (message.includes('Network') || message.includes('Failed to fetch')) {
     return 'Unable to connect to the authentication server. Please check your internet connection.';
   }
+  if (
+    message.includes('violates') ||
+    message.includes('syntax error') ||
+    message.includes('relation') ||
+    message.includes('column') ||
+    message.includes('SQLERRM') ||
+    message.includes('permission denied')
+  ) {
+    return 'A database security or service error occurred. Please try again later or contact an administrator.';
+  }
 
   return message || 'An unexpected authentication error occurred. Please try again.';
 }

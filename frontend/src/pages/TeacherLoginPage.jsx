@@ -110,7 +110,7 @@ export function TeacherLoginPage() {
         const destination =
           from && from !== ROUTES.TEACHER_LOGIN && from !== ROUTES.LOGIN
             ? from
-            : ROUTES.TEACHER_STATUS;
+            : ROUTES.TEACHER_DASHBOARD;
         navigate(destination, { replace: true });
         return;
       }

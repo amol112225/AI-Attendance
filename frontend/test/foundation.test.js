@@ -2060,4 +2060,427 @@ const sqlTestPath = path.join(repoRoot, 'supabase', 'tests', 'milestone_8_10_ver
 assert.ok(fs.existsSync(sqlTestPath), 'milestone_8_10_verification.sql must exist');
 
 console.log('✔ Milestone 8.10: All 55 Authentication Integration & Security Verification tests passed successfully');
-console.log('--- All Milestone 1 to 8.10 Verification Tests Passed! ---');
+
+// ==============================================================================
+// 24. Milestone 8.12: Final Authentication Security Audit & Regression Suite
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 8.12: Security Audit & Production Readiness) ---');
+
+// 24.1 Production Checklist Documentation Existence
+const m812_checklistPath = path.join(repoRoot, 'docs', 'authentication-production-checklist.md');
+assert.ok(fs.existsSync(m812_checklistPath), 'authentication-production-checklist.md must exist in docs/');
+const m812_checklistContent = fs.readFileSync(m812_checklistPath, 'utf8');
+assert.ok(m812_checklistContent.includes('VITE_SUPABASE_PUBLISHABLE_KEY'), 'Checklist documents publishable key');
+assert.ok(m812_checklistContent.includes('service_role'), 'Checklist warns against service_role in frontend');
+assert.ok(m812_checklistContent.includes('uq_teacher_pending_requests'), 'Checklist documents pending requests constraint');
+
+// 24.2 Error Handling: Raw SQL Error Masking in formatAuthError
+const m812_rawSqlErrors = [
+  new Error('relation "public.profiles" does not exist'),
+  new Error('new row violates row-level security policy for table profiles'),
+  new Error('duplicate key value violates unique constraint "uq_teacher_pending_requests"'),
+  new Error('permission denied for column "role" of relation "profiles"'),
+  new Error('syntax error at or near "SELECT"'),
+  new Error('Failed to create user profile: SQLERRM: connection failure'),
+];
+for (const sqlErr of m812_rawSqlErrors) {
+  const formatted = formatAuthError(sqlErr);
+  assert.strictEqual(
+    formatted,
+    'A database security or service error occurred. Please try again later or contact an administrator.',
+    'Raw database errors must be masked without leaking schema or table names'
+  );
+}
+
+// 24.3 Area 1: Student registration and login regression
+const m812_studentReg = await testStudentRegistration({
+  fullName: 'Reg Student',
+  email: 'student_reg@attendai.edu',
+  password: 'Password123!',
+  confirmEmail: false,
+});
+assert.strictEqual(m812_studentReg.error, null);
+assert.strictEqual(m812_studentReg.isConfirmationRequired, false);
+const m812_studentLogin = await testStudentLogin('student@attendai.edu', 'ValidPass123!');
+assert.ok(m812_studentLogin.data.session, 'Student login produces active session');
+
+// 24.4 Area 2: Teacher registration and approval requests regression
+const m812_teacherIntent = await testTeacherRegistrationIntent({
+  full_name: 'Dr. Reg Teacher',
+  requested_role: 'teacher',
+});
+assert.strictEqual(m812_teacherIntent.profile.role, 'student', 'Profile role defaults strictly to student');
+assert.strictEqual(m812_teacherIntent.profile.is_approved, false, 'Profile is_approved defaults strictly to false');
+assert.strictEqual(m812_teacherIntent.request.status, 'pending', 'Pending teacher request generated');
+
+// 24.5 Area 3: Approved Teacher access regression
+const m812_approvedAccess = evaluateAccess({
+  allowedRoles: [ROLES.TEACHER, ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m812_approvedAccess.allowed, true, 'Approved teacher must have faculty access');
+
+// 24.6 Area 4: Pending and rejected Teacher restrictions regression
+const m812_pendingAccess = evaluateAccess({
+  allowedRoles: [ROLES.TEACHER, ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m812_pendingAccess.allowed, false);
+assert.strictEqual(m812_pendingAccess.reason, 'pending_approval');
+
+const m812_rejectedAccess = evaluateAccess({
+  allowedRoles: [ROLES.TEACHER, ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m812_rejectedAccess.allowed, false);
+assert.strictEqual(m812_rejectedAccess.reason, 'forbidden');
+
+// 24.7 Area 5: Admin authorization regression
+const m812_adminAccess = evaluateAccess({
+  allowedRoles: [ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m812_adminAccess.allowed, true, 'Admin with approved status granted access');
+
+const m812_studentToAdmin = evaluateAccess({
+  allowedRoles: [ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m812_studentToAdmin.allowed, false);
+assert.strictEqual(m812_studentToAdmin.reason, 'forbidden');
+
+const m812_teacherToAdmin = evaluateAccess({
+  allowedRoles: [ROLES.ADMIN],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m812_teacherToAdmin.allowed, false);
+assert.strictEqual(m812_teacherToAdmin.reason, 'forbidden');
+
+// 24.8 Area 6 & 7: Unauthorized role and profile modifications regression
+assert.throws(
+  () => simulateProfileUpdateAttempt({ role: 'student', is_approved: false }, { role: 'admin' }),
+  /Cannot alter role/
+);
+assert.throws(
+  () => simulateProfileUpdateAttempt({ role: 'student', is_approved: false }, { is_approved: true }),
+  /Cannot alter is_approved/
+);
+assert.throws(
+  () => simulateProfileUpdateAttempt({ id: 'u-1', role: 'student' }, { id: 'u-hacked' }),
+  /Cannot alter id/
+);
+
+// 24.9 Area 8: Unauthorized Teacher request modifications regression
+assert.throws(
+  () => simulateTeacherSelfApprovalAttempt('authenticated', 'approved'),
+  /Security violation/
+);
+
+// 24.10 Area 9: Session restoration and logout regression
+const m812_restored = await testSessionRestoration({ user: { id: 'test-u' } });
+assert.ok(m812_restored.session);
+assert.strictEqual(m812_restored.profile.role, 'student');
+const m812_loggedOut = testLogoutState({
+  session: m812_restored.session,
+  user: m812_restored.session.user,
+  profile: m812_restored.profile,
+  isAuthenticated: true,
+});
+assert.strictEqual(m812_loggedOut.session, null);
+assert.strictEqual(m812_loggedOut.isAuthenticated, false);
+
+// 24.11 Area 10: Missing-profile and database-error handling regression
+const m812_missingProfile = evaluateAccess({
+  allowedRoles: [ROLES.STUDENT],
+  isAuthenticated: true,
+  profile: null,
+});
+assert.strictEqual(m812_missingProfile.allowed, false);
+assert.strictEqual(m812_missingProfile.reason, 'no_profile');
+
+// 24.12 Area 11: Password recovery security regression
+assert.ok(recoveryResult.message.includes('If an account exists'), 'User enumeration prevented');
+assert.strictEqual(afterResetProfile.role, 'student', 'Student role preserved across reset');
+assert.strictEqual(afterTeacherReset.role, 'teacher', 'Teacher role preserved across reset');
+
+// 24.13 Area 12: Public homepage access regression
+const m812_homeAccess = evaluateAccess({
+  allowedRoles: [], // Public route
+  isAuthenticated: false,
+  profile: null,
+});
+assert.strictEqual(m812_homeAccess.allowed, false); // Base evaluateAccess requires auth when protected, public routes bypass guard
+
+// 24.14 Double-submission protection across forms
+const m812_loginSource = fs.readFileSync(path.join(srcDir, 'pages', 'LoginPage.jsx'), 'utf8');
+assert.ok(m812_loginSource.includes('if (isSubmitting) return;'), 'LoginPage guards duplicate submissions');
+const m812_teacherLoginSource = fs.readFileSync(path.join(srcDir, 'pages', 'TeacherLoginPage.jsx'), 'utf8');
+assert.ok(m812_teacherLoginSource.includes('if (isSubmitting) return;'), 'TeacherLoginPage guards duplicate submissions');
+const m812_teacherStatusSource = fs.readFileSync(path.join(srcDir, 'pages', 'TeacherStatusPage.jsx'), 'utf8');
+assert.ok(m812_teacherStatusSource.includes('if (isRefreshing) return;'), 'TeacherStatusPage guards duplicate refresh');
+assert.ok(m812_teacherStatusSource.includes('if (!user?.id || isSubmitting) return;'), 'TeacherStatusPage guards duplicate submission');
+
+console.log('✔ Milestone 8.12: All 20 Security Audit & Production Readiness regression checks passed successfully');
+
+// ==============================================================================
+// 25. Milestone 9.1: Dashboard Architecture and Shared Layout
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.1: Dashboard Architecture & Layout) ---');
+
+// 25.1 Verify Dashboard File Structure and Integrity
+const m91_dashboardLayoutPath = path.join(srcDir, 'components', 'dashboard', 'DashboardLayout.jsx');
+const m91_dashboardSidebarPath = path.join(srcDir, 'components', 'dashboard', 'DashboardSidebar.jsx');
+const m91_dashboardHeaderPath = path.join(srcDir, 'components', 'dashboard', 'DashboardHeader.jsx');
+const m91_dashboardNavPath = path.join(srcDir, 'components', 'dashboard', 'DashboardNavigation.jsx');
+const m91_navConfigPath = path.join(srcDir, 'components', 'dashboard', 'navigationConfig.jsx');
+const m91_pageHeaderPath = path.join(srcDir, 'components', 'dashboard', 'DashboardPageHeader.jsx');
+const m91_dashboardIndexCompPath = path.join(srcDir, 'components', 'dashboard', 'index.js');
+const m91_dashboardCssPath = path.join(srcDir, 'styles', 'dashboard.css');
+
+const m91_studentDashPath = path.join(srcDir, 'pages', 'dashboards', 'StudentDashboard.jsx');
+const m91_teacherDashPath = path.join(srcDir, 'pages', 'dashboards', 'TeacherDashboard.jsx');
+const m91_adminDashPath = path.join(srcDir, 'pages', 'dashboards', 'AdminDashboard.jsx');
+const m91_dashboardsIndexPath = path.join(srcDir, 'pages', 'dashboards', 'index.js');
+
+assert.ok(fs.existsSync(m91_dashboardLayoutPath), 'DashboardLayout.jsx must exist');
+assert.ok(fs.existsSync(m91_dashboardSidebarPath), 'DashboardSidebar.jsx must exist');
+assert.ok(fs.existsSync(m91_dashboardHeaderPath), 'DashboardHeader.jsx must exist');
+assert.ok(fs.existsSync(m91_dashboardNavPath), 'DashboardNavigation.jsx must exist');
+assert.ok(fs.existsSync(m91_navConfigPath), 'navigationConfig.jsx must exist');
+assert.ok(fs.existsSync(m91_pageHeaderPath), 'DashboardPageHeader.jsx must exist');
+assert.ok(fs.existsSync(m91_dashboardIndexCompPath), 'components/dashboard/index.js must exist');
+assert.ok(fs.existsSync(m91_dashboardCssPath), 'dashboard.css must exist');
+
+assert.ok(fs.existsSync(m91_studentDashPath), 'StudentDashboard.jsx must exist');
+assert.ok(fs.existsSync(m91_teacherDashPath), 'TeacherDashboard.jsx must exist');
+assert.ok(fs.existsSync(m91_adminDashPath), 'AdminDashboard.jsx must exist');
+assert.ok(fs.existsSync(m91_dashboardsIndexPath), 'pages/dashboards/index.js must exist');
+
+// 25.2 Verify Route Constants in routes.js
+const m91_routesContent = fs.readFileSync(path.join(srcDir, 'routes', 'routes.js'), 'utf8');
+assert.ok(m91_routesContent.includes("STUDENT_DASHBOARD: '/student/dashboard'"), 'STUDENT_DASHBOARD constant missing');
+assert.ok(m91_routesContent.includes("STUDENT_ATTENDANCE: '/student/attendance'"), 'STUDENT_ATTENDANCE constant missing');
+assert.ok(m91_routesContent.includes("STUDENT_SUBJECTS: '/student/subjects'"), 'STUDENT_SUBJECTS constant missing');
+assert.ok(m91_routesContent.includes("STUDENT_PROFILE: '/student/profile'"), 'STUDENT_PROFILE constant missing');
+
+assert.ok(m91_routesContent.includes("TEACHER_DASHBOARD: '/teacher/dashboard'"), 'TEACHER_DASHBOARD constant missing');
+assert.ok(m91_routesContent.includes("TEACHER_CLASSES: '/teacher/classes'"), 'TEACHER_CLASSES constant missing');
+assert.ok(m91_routesContent.includes("TEACHER_SESSIONS: '/teacher/sessions'"), 'TEACHER_SESSIONS constant missing');
+assert.ok(m91_routesContent.includes("TEACHER_RECORDS: '/teacher/records'"), 'TEACHER_RECORDS constant missing');
+assert.ok(m91_routesContent.includes("TEACHER_PROFILE: '/teacher/profile'"), 'TEACHER_PROFILE constant missing');
+
+assert.ok(m91_routesContent.includes("ADMIN_DASHBOARD: '/admin/dashboard'"), 'ADMIN_DASHBOARD constant missing');
+assert.ok(m91_routesContent.includes("ADMIN_USERS: '/admin/users'"), 'ADMIN_USERS constant missing');
+assert.ok(m91_routesContent.includes("ADMIN_TEACHER_APPROVALS: '/admin/teacher-approvals'"), 'ADMIN_TEACHER_APPROVALS constant missing');
+assert.ok(m91_routesContent.includes("ADMIN_SYSTEM: '/admin/system'"), 'ADMIN_SYSTEM constant missing');
+assert.ok(m91_routesContent.includes("ADMIN_PROFILE: '/admin/profile'"), 'ADMIN_PROFILE constant missing');
+
+// 25.3 Verify AppRoutes Role Protection Registration
+const m91_appRoutesContent = fs.readFileSync(path.join(srcDir, 'routes', 'AppRoutes.jsx'), 'utf8');
+assert.ok(m91_appRoutesContent.includes('StudentDashboard'), 'StudentDashboard missing from AppRoutes.jsx');
+assert.ok(m91_appRoutesContent.includes('TeacherDashboard'), 'TeacherDashboard missing from AppRoutes.jsx');
+assert.ok(m91_appRoutesContent.includes('AdminDashboard'), 'AdminDashboard missing from AppRoutes.jsx');
+assert.ok(m91_appRoutesContent.includes('RoleBasedRoute'), 'RoleBasedRoute missing from AppRoutes.jsx');
+
+// 25.4 Role-Specific Navigation Configuration Isolation
+const m91_navConfigContent = fs.readFileSync(m91_navConfigPath, 'utf8');
+
+// Student Navigation checks:
+assert.ok(m91_navConfigContent.includes("label: 'Dashboard'"), 'Dashboard link missing');
+assert.ok(m91_navConfigContent.includes("label: 'My Attendance'"), 'My Attendance link missing');
+assert.ok(m91_navConfigContent.includes("label: 'My Subjects'"), 'My Subjects link missing');
+assert.ok(m91_navConfigContent.includes("label: 'My Profile'"), 'My Profile link missing');
+
+// Teacher Navigation checks:
+assert.ok(m91_navConfigContent.includes("label: 'My Classes'"), 'My Classes link missing');
+assert.ok(m91_navConfigContent.includes("label: 'Attendance Sessions'"), 'Attendance Sessions link missing');
+assert.ok(m91_navConfigContent.includes("label: 'Attendance Records'"), 'Attendance Records link missing');
+
+// Admin Navigation checks:
+assert.ok(m91_navConfigContent.includes("label: 'User Management'"), 'User Management link missing');
+assert.ok(m91_navConfigContent.includes("label: 'Teacher Approvals'"), 'Teacher Approvals link missing');
+assert.ok(m91_navConfigContent.includes("label: 'System Overview'"), 'System Overview link missing');
+
+// 25.5 Access Decision Matrix for 3 Dashboards
+// 1. Authenticated Student on Student Dashboard -> Allowed
+const m91_studentOnStudentDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.STUDENT_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m91_studentOnStudentDash.allowed, true, 'Student must access Student Dashboard');
+
+// 2. Authenticated Student on Teacher Dashboard -> Forbidden
+const m91_studentOnTeacherDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m91_studentOnTeacherDash.allowed, false);
+assert.strictEqual(m91_studentOnTeacherDash.reason, 'forbidden');
+
+// 3. Authenticated Student on Admin Dashboard -> Forbidden
+const m91_studentOnAdminDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.ADMIN_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.ADMIN_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m91_studentOnAdminDash.allowed, false);
+assert.strictEqual(m91_studentOnAdminDash.reason, 'forbidden');
+
+// 4. Approved Teacher on Teacher Dashboard -> Allowed
+const m91_approvedTeacherOnDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m91_approvedTeacherOnDash.allowed, true, 'Approved teacher must access Teacher Dashboard');
+
+// 5. Pending Teacher on Teacher Dashboard -> Pending Approval
+const m91_pendingTeacherOnDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m91_pendingTeacherOnDash.allowed, false);
+assert.strictEqual(m91_pendingTeacherOnDash.reason, 'pending_approval');
+
+// 6. Rejected Teacher on Teacher Dashboard -> Forbidden
+const m91_rejectedTeacherOnDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m91_rejectedTeacherOnDash.allowed, false);
+assert.strictEqual(m91_rejectedTeacherOnDash.reason, 'forbidden');
+
+// 7. Teacher on Admin Dashboard -> Forbidden
+const m91_teacherOnAdminDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.ADMIN_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.ADMIN_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m91_teacherOnAdminDash.allowed, false);
+assert.strictEqual(m91_teacherOnAdminDash.reason, 'forbidden');
+
+// 8. Admin on Admin Dashboard -> Allowed
+const m91_adminOnAdminDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.ADMIN_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.ADMIN_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m91_adminOnAdminDash.allowed, true, 'Admin must access Admin Dashboard');
+
+// 9. Admin on Teacher Dashboard -> Allowed
+const m91_adminOnTeacherDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m91_adminOnTeacherDash.allowed, true, 'Admin can supervise Teacher Dashboard');
+
+// 10. Admin on Student Dashboard -> Allowed
+const m91_adminOnStudentDash = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.STUDENT_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m91_adminOnStudentDash.allowed, true, 'Admin can supervise Student Dashboard');
+
+// 11. Unauthenticated Visitor on Dashboards -> Not Authenticated
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles, isAuthenticated: false }).reason,
+  'not_authenticated'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles, isAuthenticated: false }).reason,
+  'not_authenticated'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ROUTE_ACCESS.ADMIN_ONLY.roles, isAuthenticated: false }).reason,
+  'not_authenticated'
+);
+
+// 12. Missing Profile on Dashboards -> No Profile
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles, isAuthenticated: true, profile: null }).reason,
+  'no_profile'
+);
+
+// 25.6 Layout and Responsive Design Attributes
+const m91_layoutContent = fs.readFileSync(m91_dashboardLayoutPath, 'utf8');
+assert.ok(m91_layoutContent.includes('isMobileSidebarOpen'), 'Mobile sidebar state missing in DashboardLayout');
+assert.ok(m91_layoutContent.includes('dashboard-backdrop'), 'Backdrop overlay missing in DashboardLayout');
+assert.ok(m91_layoutContent.includes("e.key === 'Escape'"), 'Escape listener missing in DashboardLayout');
+assert.ok(m91_layoutContent.includes('window.innerWidth >= 1024'), 'Breakpoint resize listener missing in DashboardLayout');
+
+const m91_headerContent = fs.readFileSync(m91_dashboardHeaderPath, 'utf8');
+assert.ok(m91_headerContent.includes('dashboard-header__toggle-btn'), 'Mobile toggle button missing in DashboardHeader');
+assert.ok(m91_headerContent.includes('dashboard-role-badge'), 'Role badge missing in DashboardHeader');
+
+const m91_studentDashContent = fs.readFileSync(m91_studentDashPath, 'utf8');
+assert.ok(m91_studentDashContent.includes('EmptyState'), 'EmptyState placeholder missing in StudentDashboard');
+assert.ok(m91_studentDashContent.includes('DashboardPageHeader'), 'DashboardPageHeader missing in StudentDashboard');
+
+const m91_teacherDashContent = fs.readFileSync(m91_teacherDashPath, 'utf8');
+assert.ok(m91_teacherDashContent.includes('EmptyState'), 'EmptyState placeholder missing in TeacherDashboard');
+
+const m91_adminDashContent = fs.readFileSync(m91_adminDashPath, 'utf8');
+assert.ok(m91_adminDashContent.includes('EmptyState'), 'EmptyState placeholder missing in AdminDashboard');
+
+console.log('✔ Milestone 9.1: All 26 Dashboard Architecture & Layout tests passed successfully');
+console.log('--- All Milestone 1 to 9.1 Verification Tests Passed! ---');

@@ -192,7 +192,7 @@ export function Navbar({
               <div className="navbar__user-actions">
                 {role === 'teacher' && isApproved ? (
                   <Link
-                    to={ROUTES.TEACHER_STATUS}
+                    to={ROUTES.TEACHER_DASHBOARD}
                     className="navbar__teacher-pill"
                     title="Faculty Portal"
                   >
@@ -205,6 +205,22 @@ export function Navbar({
                     title="View Teacher Application Status"
                   >
                     Teacher Pending
+                  </Link>
+                ) : role === 'admin' ? (
+                  <Link
+                    to={ROUTES.ADMIN_DASHBOARD}
+                    className="navbar__teacher-pill"
+                    title="Admin Console"
+                  >
+                    Admin Console
+                  </Link>
+                ) : role === 'student' ? (
+                  <Link
+                    to={ROUTES.STUDENT_DASHBOARD}
+                    className="navbar__student-pill"
+                    title="Student Dashboard"
+                  >
+                    Dashboard
                   </Link>
                 ) : null}
                 <div className="navbar__user-badge" title={user?.email || 'Authenticated User'}>
@@ -308,11 +324,29 @@ export function Navbar({
                   </div>
                   {role === 'teacher' && isApproved && (
                     <Link
-                      to={ROUTES.TEACHER_STATUS}
+                      to={ROUTES.TEACHER_DASHBOARD}
                       className="navbar__mobile-link"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Faculty Portal →
+                    </Link>
+                  )}
+                  {role === 'admin' && (
+                    <Link
+                      to={ROUTES.ADMIN_DASHBOARD}
+                      className="navbar__mobile-link"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Admin Console →
+                    </Link>
+                  )}
+                  {role === 'student' && (
+                    <Link
+                      to={ROUTES.STUDENT_DASHBOARD}
+                      className="navbar__mobile-link"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Student Dashboard →
                     </Link>
                   )}
                   {teacherRequest?.status === 'pending' && !isApproved && (

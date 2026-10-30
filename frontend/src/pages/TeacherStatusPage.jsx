@@ -48,6 +48,7 @@ export function TeacherStatusPage() {
   const [submitMessage, setSubmitMessage] = useState('');
 
   const handleRefresh = async () => {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     try {
       await Promise.all([refreshProfile(), refreshTeacherRequest()]);
@@ -289,8 +290,19 @@ export function TeacherStatusPage() {
               </Button>
             )}
 
+            {status === 'approved' && (
+              <Button
+                variant="primary"
+                size="md"
+                type="button"
+                onClick={() => navigate(ROUTES.TEACHER_DASHBOARD)}
+              >
+                Go to Faculty Portal
+              </Button>
+            )}
+
             <Button
-              variant="primary"
+              variant="outline"
               size="md"
               type="button"
               icon={<Home size={16} />}

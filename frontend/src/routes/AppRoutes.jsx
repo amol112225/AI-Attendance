@@ -6,8 +6,10 @@
  */
 
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoadingIndicator } from '../components/common/LoadingIndicator';
+import { RoleBasedRoute } from './RoleBasedRoute';
+import { ROLES } from './accessRules';
 import { ROUTES } from './routes';
 
 // Code-split pages using React.lazy to maintain minimal initial bundle size
@@ -21,6 +23,11 @@ const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage'));
 const TeacherStatusPage = lazy(() => import('../pages/TeacherStatusPage'));
 const UnauthorizedPage = lazy(() => import('../pages/UnauthorizedPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
+
+// Milestone 9.1: Role Dashboards
+const StudentDashboard = lazy(() => import('../pages/dashboards/StudentDashboard'));
+const TeacherDashboard = lazy(() => import('../pages/dashboards/TeacherDashboard'));
+const AdminDashboard = lazy(() => import('../pages/dashboards/AdminDashboard'));
 
 export function AppRoutes() {
   return (
@@ -56,6 +63,133 @@ export function AppRoutes() {
 
         {/* Milestone 8.6: Access Denied / Unauthorized Route */}
         <Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedPage />} />
+
+        {/* ==================================================================
+            Milestone 9.1: Student Dashboard & Sub-routes
+            ================================================================== */}
+        <Route
+          path={ROUTES.STUDENT_DASHBOARD}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
+              <StudentDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route path="/student" element={<Navigate to={ROUTES.STUDENT_DASHBOARD} replace />} />
+        <Route
+          path={ROUTES.STUDENT_ATTENDANCE}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
+              <StudentDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.STUDENT_SUBJECTS}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
+              <StudentDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.STUDENT_PROFILE}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
+              <StudentDashboard />
+            </RoleBasedRoute>
+          }
+        />
+
+        {/* ==================================================================
+            Milestone 9.1: Teacher Dashboard & Sub-routes (Approved Teachers)
+            ================================================================== */}
+        <Route
+          path={ROUTES.TEACHER_DASHBOARD}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]} requireApproval={true}>
+              <TeacherDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route path="/teacher" element={<Navigate to={ROUTES.TEACHER_DASHBOARD} replace />} />
+        <Route
+          path={ROUTES.TEACHER_CLASSES}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]} requireApproval={true}>
+              <TeacherDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TEACHER_SESSIONS}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]} requireApproval={true}>
+              <TeacherDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TEACHER_RECORDS}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]} requireApproval={true}>
+              <TeacherDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TEACHER_PROFILE}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]} requireApproval={true}>
+              <TeacherDashboard />
+            </RoleBasedRoute>
+          }
+        />
+
+        {/* ==================================================================
+            Milestone 9.1: Admin Dashboard & Sub-routes (Administrators Only)
+            ================================================================== */}
+        <Route
+          path={ROUTES.ADMIN_DASHBOARD}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+              <AdminDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route path="/admin" element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
+        <Route
+          path={ROUTES.ADMIN_USERS}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+              <AdminDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_TEACHER_APPROVALS}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+              <AdminDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_SYSTEM}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+              <AdminDashboard />
+            </RoleBasedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_PROFILE}
+          element={
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+              <AdminDashboard />
+            </RoleBasedRoute>
+          }
+        />
 
         {/* Catch-All 404 Page */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />

@@ -99,7 +99,7 @@ export function LoginPage() {
       }
 
       if (data?.session) {
-        setAuthSession(data.session);
+        await setAuthSession(data.session);
         const from = location.state?.from?.pathname;
         const destination =
           from && from !== ROUTES.LOGIN && from !== ROUTES.REGISTER
