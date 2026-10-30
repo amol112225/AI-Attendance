@@ -1,19 +1,26 @@
 /**
  * AttendAI Registration Page Styles
  * Milestone 8.3: AttendAI User Registration
+ * UI Refinement: Perfectly balanced container, comfortable vertical rhythm, no clipping
  */
 
 .register-page {
-  padding-top: var(--space-8);
-  padding-bottom: var(--space-16);
-  min-height: calc(100vh - 64px - 140px);
+  width: 100%;
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-8);
+  min-height: calc(100vh - 64px - 140px);
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
   .register-page {
-    padding-top: var(--space-12);
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-10);
   }
 }
 
@@ -22,28 +29,31 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-2xl);
   padding: var(--space-6) var(--space-5);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
   max-width: 480px;
+  width: 100%;
   margin: 0 auto;
   position: relative;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
 @media (min-width: 480px) {
   .register-card {
-    padding: var(--space-8) var(--space-8);
+    padding: 1.75rem 2rem;
   }
 }
 
 /* Role Selector Tabs */
 .auth-role-tabs {
   display: flex;
-  background-color: var(--color-bg-subtle);
+  background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   padding: 4px;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
   gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .auth-role-tab {
@@ -52,7 +62,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: 8px 12px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
@@ -63,89 +73,96 @@
 
 .auth-role-tab:hover {
   color: var(--color-text-primary);
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .auth-role-tab--active {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-bg-elevated);
   color: var(--color-brand-cyan);
   font-weight: var(--font-weight-semibold);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border-default);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border-cyan);
 }
 
 /* Header */
 .register-header {
   text-align: center;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 .register-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.06em;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-brand-cyan);
   background-color: var(--color-brand-cyan-subtle);
   border: 1px solid var(--color-border-cyan);
   border-radius: var(--radius-full);
-  margin-bottom: var(--space-3);
-}
-
-.register-title {
-  font-size: var(--font-size-2xl);
-  letter-spacing: -0.02em;
-  color: var(--color-text-primary);
   margin-bottom: var(--space-2);
 }
 
+.register-title {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
 .register-subtitle {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   line-height: var(--line-height-normal);
-  margin: 0;
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 /* Form Styles */
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 12px;
+  width: 100%;
 }
 
 .register-field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 4px;
   text-align: left;
+  width: 100%;
 }
 
 .register-label {
-  font-size: var(--font-size-sm);
+  font-size: 0.8125rem;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
+  display: block;
 }
 
 .register-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .register-input {
   width: 100%;
-  height: 44px;
-  padding: 0 var(--space-4);
+  height: 42px;
+  padding: 0 14px;
   font-family: inherit;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
+  box-sizing: border-box;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -155,12 +172,13 @@
 
 .register-input:focus {
   outline: none;
-  border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px var(--color-brand-violet-subtle);
+  border-color: var(--color-brand-cyan);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18);
 }
 
 .register-input::placeholder {
   color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 .register-input--error {
@@ -173,14 +191,14 @@
 }
 
 .register-field-error {
-  font-size: var(--font-size-xs);
+  font-size: 0.75rem;
   color: var(--color-danger);
   line-height: var(--line-height-tight);
   margin-top: 2px;
 }
 
 .register-field-hint {
-  font-size: var(--font-size-xs);
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   line-height: var(--line-height-tight);
   margin-top: 2px;
@@ -190,12 +208,14 @@
 .register-policy-notice {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background-color: var(--color-bg-surface-subtle);
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  margin-top: var(--space-1);
+  margin-top: 2px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .register-policy-notice svg {
@@ -205,33 +225,45 @@
 }
 
 .register-policy-text {
-  font-size: var(--font-size-xs);
+  font-size: 0.75rem;
   color: var(--color-text-secondary);
-  line-height: var(--line-height-normal);
+  line-height: 1.45;
   margin: 0;
+  text-align: left;
 }
 
 /* Actions */
 .register-actions {
-  margin-top: var(--space-2);
+  margin-top: 4px;
+  width: 100%;
 }
 
 .register-actions .btn {
   width: 100%;
+  justify-content: center;
+  height: 44px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
 }
 
 /* Footer Link */
 .register-footer {
   text-align: center;
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 .register-footer-text {
-  font-size: var(--font-size-sm);
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
   margin: 0;
+  line-height: var(--line-height-normal);
 }
 
 .register-footer-link {
@@ -242,7 +274,7 @@
 }
 
 .register-footer-link:hover {
-  color: var(--color-brand-violet);
+  color: var(--color-text-primary);
   text-decoration: underline;
 }
 
@@ -308,4 +340,3 @@
 .register-success-actions .btn {
   width: 100%;
 }
-

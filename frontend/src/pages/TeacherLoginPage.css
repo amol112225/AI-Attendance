@@ -1,157 +1,106 @@
 /**
  * AttendAI Teacher Login Styles
- * UI Fix: Centered, balanced form layout with consistent container width and input dimensions
+ * Milestone 8.8: Teacher Login and Role-Specific Authentication Experience
+ * UI Parity: Structural layout, container dimensions, and rhythm identical to Student Login (LoginPage.css)
  */
 @import './LoginPage.css';
 
 /* Form Container & Card Width Consistency */
 .login-page {
-  padding-top: var(--space-8);
-  padding-bottom: var(--space-16);
-  min-height: calc(100vh - 64px - 140px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-8);
+  min-height: calc(100vh - 64px - 140px);
   box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
   .login-page {
-    padding-top: var(--space-12);
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-10);
   }
 }
 
 .login-card {
   width: 100%;
-  max-width: 460px;
+  max-width: 440px;
   margin: 0 auto;
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-2xl);
   padding: var(--space-6) var(--space-5);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
 }
 
 @media (min-width: 480px) {
   .login-card {
-    padding: var(--space-8) var(--space-7);
+    padding: 1.75rem 2rem;
   }
 }
 
 /* Teacher Faculty Portal Badge */
 .login-badge--teacher {
-  color: var(--color-brand-purple);
+  color: #c084fc;
   background-color: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.35);
 }
 
-/* Input Fields & Layout Structure */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  width: 100%;
-}
-
-.login-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  text-align: left;
-  width: 100%;
-}
-
-.login-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  display: block;
-}
-
-.login-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.login-input {
-  width: 100%;
-  height: 44px;
-  padding: 0 var(--space-4);
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  box-sizing: border-box;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.login-input:hover {
-  border-color: var(--color-border-hover);
-}
-
+/* Teacher Input Focus Glow */
 .login-input:focus {
   outline: none;
-  border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px var(--color-brand-violet-subtle);
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
 }
 
-.login-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.login-input--error {
-  border-color: var(--color-danger);
-}
-
-.login-input--error:focus {
-  border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px var(--color-danger-bg);
-}
-
-/* Actions & Submit Button */
+/* Actions & Buttons */
 .login-actions {
-  margin-top: var(--space-2);
+  margin-top: 4px;
   width: 100%;
 }
 
 .login-actions .btn {
   width: 100%;
   justify-content: center;
+  height: 44px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
 }
 
 /* Footer Navigation Links */
 .login-footer {
   text-align: center;
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
+  width: 100%;
 }
 
 .login-footer-text {
-  font-size: var(--font-size-sm);
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
   margin: 0;
+  line-height: var(--line-height-normal);
 }
 
 .login-footer-link {
-  color: var(--color-brand-cyan);
+  color: #c084fc;
   font-weight: var(--font-weight-medium);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
 
 .login-footer-link:hover {
-  color: var(--color-brand-violet);
+  color: #e9d5ff;
   text-decoration: underline;
 }
