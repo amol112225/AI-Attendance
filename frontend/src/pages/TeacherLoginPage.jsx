@@ -106,7 +106,11 @@ export function TeacherLoginPage() {
         if (result.data?.session) {
           await setAuthSession(result.data.session);
         }
-        const destination = location.state?.from?.pathname || ROUTES.TEACHER_STATUS;
+        const from = location.state?.from?.pathname;
+        const destination =
+          from && from !== ROUTES.TEACHER_LOGIN && from !== ROUTES.LOGIN
+            ? from
+            : ROUTES.TEACHER_STATUS;
         navigate(destination, { replace: true });
         return;
       }

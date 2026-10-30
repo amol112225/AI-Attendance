@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
@@ -21,6 +21,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user, setAuthSession, logout } = useAuth();
 
   // Form State
@@ -99,7 +100,12 @@ export function LoginPage() {
 
       if (data?.session) {
         setAuthSession(data.session);
-        navigate(ROUTES.ROOT);
+        const from = location.state?.from?.pathname;
+        const destination =
+          from && from !== ROUTES.LOGIN && from !== ROUTES.REGISTER
+            ? from
+            : ROUTES.ROOT;
+        navigate(destination, { replace: true });
       } else {
         // Fallback for safety
         navigate(ROUTES.ROOT);
