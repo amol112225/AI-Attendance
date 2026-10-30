@@ -333,6 +333,163 @@ export function onAuthStateChange(callback) {
   };
 }
 
+/**
+ * Outcome constants for Teacher authentication verification.
+ * Milestone 8.8: Teacher Login and Role-Specific Authentication Experience
+ */
+export const TEACHER_LOGIN_OUTCOMES = {
+  APPROVED_TEACHER: 'APPROVED_TEACHER', // Case A: Approved teacher with full faculty access
+  PENDING_TEACHER: 'PENDING_TEACHER',   // Case B: Pending admin approval, restricted access
+  REJECTED_TEACHER: 'REJECTED_TEACHER', // Case C: Rejected application, faculty access denied
+  STUDENT_ROLE: 'STUDENT_ROLE',         // Case D: Student account, redirect to student login
+  ADMIN_ROLE: 'ADMIN_ROLE',             // Case E: Admin account, access denied on faculty portal
+  PROFILE_ERROR: 'PROFILE_ERROR',       // Case F: Missing profile or database error, fail safely
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS', // Case G: Auth failed at Supabase level
+};
+
+/**
+ * Dedicated Teacher sign-in and authorization verification service.
+ * Milestone 8.8: Teacher Login and Role-Specific Authentication Experience
+ *
+ * Enforces role security:
+ * 1. Authenticates using existing email/password via loginUser().
+ * 2. Fetches authoritative profile from public.profiles.
+ * 3. Checks role and approval status against database (never trusting client metadata).
+ * 4. Queries teacher_registration_requests to differentiate pending vs. rejected applications.
+ * 5. Fails safely and immediately terminates session when access is not permitted.
+ *
+ * @param {Object} params
+ * @param {string} params.email
+ * @param {string} params.password
+ * @returns {Promise<{
+ *   data: Object|null,
+ *   error: Error|null,
+ *   outcome: string,
+ *   message: string,
+ *   profile?: Object|null,
+ *   request?: Object|null
+ * }>}
+ */
+export async function authenticateTeacher({ email, password }) {
+  if (!isSupabaseConfigured()) {
+    return {
+      data: null,
+      error: new Error('Authentication service is currently unconfigured.'),
+      outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+      message: 'Authentication service is currently unconfigured.',
+    };
+  }
+
+  // 1. Authenticate with Supabase credentials
+  const { data, error } = await loginUser({ email, password });
+
+  if (error) {
+    // Case G: Invalid credentials
+    return {
+      data: null,
+      error,
+      outcome: TEACHER_LOGIN_OUTCOMES.INVALID_CREDENTIALS,
+      message: formatAuthError(error),
+    };
+  }
+
+  const userId = data?.user?.id;
+  if (!userId) {
+    await logoutUser();
+    return {
+      data: null,
+      error: new Error('User session identifier missing after sign in.'),
+      outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+      message: 'Authentication failed. Please try again.',
+    };
+  }
+
+  // 2. Fetch authoritative database profile
+  const { profile, error: profileError } = await getUserProfile(userId);
+
+  // Case F: Missing profile or database error
+  if (profileError || !profile) {
+    await logoutUser();
+    return {
+      data: null,
+      error: profileError || new Error('Profile record not found in database.'),
+      outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+      message: 'Unable to verify account profile in database. Access denied.',
+    };
+  }
+
+  // Case E: Admin tries Teacher Login
+  if (profile.role === 'admin') {
+    await logoutUser();
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE,
+      message: 'Administrator accounts cannot sign in through the Faculty Portal. Please use the administrative portal.',
+    };
+  }
+
+  // Case A: Approved Teacher
+  if (profile.role === 'teacher' && profile.is_approved === true) {
+    return {
+      data,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER,
+      profile,
+      message: 'Teacher authenticated successfully.',
+    };
+  }
+
+  // Query teacher registration request to evaluate pending or rejected state
+  const { request: teacherRequest } = await getTeacherRegistrationRequest(userId);
+
+  // Case C: Rejected Teacher Application
+  if (teacherRequest?.status === 'rejected') {
+    await logoutUser();
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER,
+      request: teacherRequest,
+      message: 'Your teacher registration request was reviewed and not approved. You cannot sign in to the Faculty Portal. You may continue to use your account via Student Sign In.',
+    };
+  }
+
+  // Case B: Pending Teacher
+  if (teacherRequest?.status === 'pending' || (profile.role === 'teacher' && !profile.is_approved)) {
+    return {
+      data,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.PENDING_TEACHER,
+      profile,
+      request: teacherRequest,
+      message: 'Your teacher registration request is currently awaiting administrative approval. Faculty portal access has not been granted yet.',
+    };
+  }
+
+  // Case D: Student tries Teacher Login
+  if (profile.role === 'student') {
+    await logoutUser();
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE,
+      message: 'Access Denied: This account is registered as a Student. Please use Student Sign In.',
+    };
+  }
+
+  // Safe fallback default: fail closed
+  await logoutUser();
+  return {
+    data: null,
+    error: new Error('Account role is not authorized for Faculty Portal.'),
+    outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+    message: 'Access Denied: Account is not authorized for Faculty Portal access.',
+  };
+}
+
+export const loginTeacher = authenticateTeacher;
+
 export const authService = {
   formatAuthError,
   registerUser,
@@ -340,6 +497,9 @@ export const authService = {
   submitTeacherRegistrationRequest,
   getTeacherRegistrationRequest,
   loginUser,
+  authenticateTeacher,
+  loginTeacher,
+  TEACHER_LOGIN_OUTCOMES,
   logoutUser,
   getSession,
   getUser,

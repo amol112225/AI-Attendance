@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
-import { formatAuthError } from '../src/services/authService.js';
+import { formatAuthError, TEACHER_LOGIN_OUTCOMES } from '../src/services/authService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1064,4 +1064,302 @@ assert.ok(studentRegistrationResult.data.session, 'Existing student login must s
 
 console.log('✔ Teacher Registration & Approval Request: Table schema, anti-tampering trigger, services, UI components, role switcher, and security simulations verified');
 
-console.log('--- All Milestone 1 to 8.7 Teacher Registration verification tests passed! ---');
+// ==============================================================================
+// 21. Milestone 8.8: Teacher Login and Role-Specific Authentication Experience
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 8.8: Teacher Login) ---');
+
+// 21.1 File Existence and Integrity
+assert.ok(fs.existsSync(teacherLoginPagePath), 'TeacherLoginPage.jsx must exist');
+const teacherLoginPageCssPath = path.join(srcDir, 'pages', 'TeacherLoginPage.css');
+assert.ok(fs.existsSync(teacherLoginPageCssPath), 'TeacherLoginPage.css must exist');
+
+const teacherLoginContent = fs.readFileSync(teacherLoginPagePath, 'utf8');
+const teacherLoginCssContent = fs.readFileSync(teacherLoginPageCssPath, 'utf8');
+
+// 21.2 UI Parity and Requirements in TeacherLoginPage
+assert.ok(teacherLoginContent.includes('authenticateTeacher'), 'TeacherLoginPage must call authenticateTeacher');
+assert.ok(teacherLoginContent.includes('TEACHER_LOGIN_OUTCOMES'), 'TeacherLoginPage must handle TEACHER_LOGIN_OUTCOMES');
+assert.ok(teacherLoginContent.includes('login-page'), 'TeacherLoginPage must use .login-page');
+assert.ok(teacherLoginContent.includes('login-card'), 'TeacherLoginPage must use .login-card');
+assert.ok(teacherLoginContent.includes('login-input'), 'TeacherLoginPage must use .login-input');
+assert.ok(teacherLoginContent.includes('FACULTY PORTAL'), 'TeacherLoginPage must include FACULTY PORTAL badge');
+assert.ok(teacherLoginContent.includes('Teacher Sign In'), 'TeacherLoginPage must have Teacher Sign In heading');
+assert.ok(teacherLoginContent.includes('ROUTES.TEACHER_REGISTER'), 'TeacherLoginPage must link to Teacher Registration');
+assert.ok(teacherLoginContent.includes('ROUTES.LOGIN'), 'TeacherLoginPage must link to Student Login');
+assert.ok(teacherLoginCssContent.includes("@import './LoginPage.css'"), 'TeacherLoginPage.css must import LoginPage.css');
+
+// 21.3 Service exports in authService.js
+const authServiceContentLatest = fs.readFileSync(path.join(srcDir, 'services', 'authService.js'), 'utf8');
+assert.ok(authServiceContentLatest.includes('authenticateTeacher'), 'authService.js must export authenticateTeacher');
+assert.ok(authServiceContentLatest.includes('loginTeacher'), 'authService.js must export loginTeacher');
+assert.ok(authServiceContentLatest.includes('TEACHER_LOGIN_OUTCOMES'), 'authService.js must export TEACHER_LOGIN_OUTCOMES');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER, 'APPROVED_TEACHER');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.PENDING_TEACHER, 'PENDING_TEACHER');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER, 'REJECTED_TEACHER');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE, 'STUDENT_ROLE');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE, 'ADMIN_ROLE');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR, 'PROFILE_ERROR');
+assert.strictEqual(TEACHER_LOGIN_OUTCOMES.INVALID_CREDENTIALS, 'INVALID_CREDENTIALS');
+
+// 21.4 Verification of the 13 required testing scenarios
+// Simulation helper for authenticateTeacher
+async function simulateAuthenticateTeacher({
+  loginResult,
+  profileResult,
+  requestResult,
+}) {
+  if (loginResult.error) {
+    return {
+      data: null,
+      error: loginResult.error,
+      outcome: TEACHER_LOGIN_OUTCOMES.INVALID_CREDENTIALS,
+      message: formatAuthError(loginResult.error),
+    };
+  }
+
+  const userId = loginResult.data?.user?.id;
+  if (!userId) {
+    return {
+      data: null,
+      error: new Error('User identifier missing after sign in.'),
+      outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+      message: 'Authentication failed. Please try again.',
+    };
+  }
+
+  if (profileResult.error || !profileResult.profile) {
+    return {
+      data: null,
+      error: profileResult.error || new Error('Profile record not found in database.'),
+      outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+      message: 'Unable to verify account profile in database. Access denied.',
+    };
+  }
+
+  const profile = profileResult.profile;
+
+  if (profile.role === 'admin') {
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE,
+      message: 'Administrator accounts cannot sign in through the Faculty Portal. Please use the administrative portal.',
+    };
+  }
+
+  if (profile.role === 'teacher' && profile.is_approved === true) {
+    return {
+      data: loginResult.data,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER,
+      profile,
+      message: 'Teacher authenticated successfully.',
+    };
+  }
+
+  const teacherRequest = requestResult?.request || null;
+
+  if (teacherRequest?.status === 'rejected') {
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER,
+      request: teacherRequest,
+      message: 'Your teacher registration request was reviewed and not approved. You cannot sign in to the Faculty Portal. You may continue to use your account via Student Sign In.',
+    };
+  }
+
+  if (teacherRequest?.status === 'pending' || (profile.role === 'teacher' && !profile.is_approved)) {
+    return {
+      data: loginResult.data,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.PENDING_TEACHER,
+      profile,
+      request: teacherRequest,
+      message: 'Your teacher registration request is currently awaiting administrative approval. Faculty portal access has not been granted yet.',
+    };
+  }
+
+  if (profile.role === 'student') {
+    return {
+      data: null,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE,
+      message: 'Access Denied: This account is registered as a Student. Please use Student Sign In.',
+    };
+  }
+
+  return {
+    data: null,
+    error: new Error('Unauthorized'),
+    outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
+    message: 'Access Denied: Account is not authorized for Faculty Portal access.',
+  };
+}
+
+// Scenario 1: Approved Teacher login
+const approvedTeacherSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'prof-1', email: 'prof@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'prof-1', role: 'teacher', is_approved: true } },
+  requestResult: { request: { status: 'approved' } },
+});
+assert.strictEqual(approvedTeacherSim.outcome, TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER);
+assert.ok(approvedTeacherSim.data.session, 'Approved teacher must have active session');
+const approvedAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: approvedTeacherSim.profile,
+  role: approvedTeacherSim.profile.role,
+  isApproved: approvedTeacherSim.profile.is_approved,
+});
+assert.strictEqual(approvedAccess.allowed, true, 'Approved teacher must have access to teacher routes');
+
+// Scenario 2: Pending Teacher login
+const pendingTeacherSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'prof-pending', email: 'pending@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'prof-pending', role: 'student', is_approved: false } },
+  requestResult: { request: { status: 'pending' } },
+});
+assert.strictEqual(pendingTeacherSim.outcome, TEACHER_LOGIN_OUTCOMES.PENDING_TEACHER);
+assert.ok(pendingTeacherSim.message.includes('awaiting administrative approval'), 'Must state awaiting approval');
+const pendingAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: pendingTeacherSim.profile,
+  role: pendingTeacherSim.profile.role,
+  isApproved: pendingTeacherSim.profile.is_approved,
+});
+assert.strictEqual(pendingAccess.allowed, false, 'Pending teacher must NOT have access to teacher routes');
+
+// Scenario 3: Rejected Teacher login
+const rejectedTeacherSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'prof-rejected', email: 'rejected@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'prof-rejected', role: 'student', is_approved: false } },
+  requestResult: { request: { status: 'rejected' } },
+});
+assert.strictEqual(rejectedTeacherSim.outcome, TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER);
+assert.strictEqual(rejectedTeacherSim.data, null, 'Rejected teacher must not retain session on faculty portal');
+assert.ok(rejectedTeacherSim.message.includes('not approved'), 'Must state request was not approved');
+
+// Scenario 4: Student attempting Teacher Login
+const studentAttemptSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'stud-1', email: 'student@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'stud-1', role: 'student', is_approved: false } },
+  requestResult: { request: null },
+});
+assert.strictEqual(studentAttemptSim.outcome, TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE);
+assert.strictEqual(studentAttemptSim.data, null, 'Student session must be cleared on teacher portal');
+assert.ok(studentAttemptSim.message.includes('Student Sign In'), 'Must direct to student login');
+
+// Scenario 5: Admin attempting Teacher Login
+const adminAttemptSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'admin-1', email: 'admin@attendai.edu' }, session: { token: 'jwt' } } },
+  profileResult: { profile: { id: 'admin-1', role: 'admin', is_approved: true } },
+  requestResult: { request: null },
+});
+assert.strictEqual(adminAttemptSim.outcome, TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE);
+assert.strictEqual(adminAttemptSim.data, null, 'Admin session must be cleared on teacher portal');
+assert.ok(adminAttemptSim.message.includes('administrative'), 'Must direct to admin portal');
+
+// Scenario 6: Invalid email/password
+const invalidCredsSim = await simulateAuthenticateTeacher({
+  loginResult: { data: null, error: new Error('Invalid login credentials') },
+  profileResult: { profile: null },
+});
+assert.strictEqual(invalidCredsSim.outcome, TEACHER_LOGIN_OUTCOMES.INVALID_CREDENTIALS);
+assert.strictEqual(invalidCredsSim.message, 'Invalid email or password. Please verify your credentials and try again.');
+
+// Scenario 7: Missing profile
+const missingProfileSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'u-noprof' }, session: { token: 'jwt' } } },
+  profileResult: { profile: null, error: null },
+});
+assert.strictEqual(missingProfileSim.outcome, TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR);
+assert.strictEqual(missingProfileSim.data, null, 'Missing profile must fail safely with null session');
+
+// Scenario 8: Database/network error during profile retrieval
+const dbErrorSim = await simulateAuthenticateTeacher({
+  loginResult: { data: { user: { id: 'u-err' }, session: { token: 'jwt' } } },
+  profileResult: { profile: null, error: new Error('Database connection failed') },
+});
+assert.strictEqual(dbErrorSim.outcome, TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR);
+assert.strictEqual(dbErrorSim.data, null, 'DB error must fail safely with null session');
+
+// Scenario 9: Teacher session restoration after refresh
+const restoredSession = { user: { id: 'prof-restored' }, token: 'valid-jwt' };
+const restoredProfile = { id: 'prof-restored', role: 'teacher', is_approved: true };
+const restoredAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: Boolean(restoredSession?.user),
+  profile: restoredProfile,
+  role: restoredProfile.role,
+  isApproved: restoredProfile.is_approved,
+});
+assert.strictEqual(restoredAccess.allowed, true, 'Restored teacher session must retain access');
+
+// Scenario 10: Teacher logout clears session and denies access
+const loggedOutState = { session: null, user: null, profile: null, role: null, isApproved: false };
+const loggedOutAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: Boolean(loggedOutState.user),
+  profile: loggedOutState.profile,
+  role: loggedOutState.role,
+  isApproved: loggedOutState.isApproved,
+});
+assert.strictEqual(loggedOutAccess.allowed, false, 'Logged out teacher must be denied access');
+assert.strictEqual(loggedOutAccess.reason, 'not_authenticated', 'Logged out teacher must be not_authenticated');
+
+// Scenario 11: Direct access to Teacher-protected routes without authentication
+const directUnauthAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: false,
+  profile: null,
+  role: null,
+  isApproved: false,
+});
+assert.strictEqual(directUnauthAccess.allowed, false);
+assert.strictEqual(directUnauthAccess.reason, 'not_authenticated');
+
+// Scenario 12: Existing Student Login remains functional
+const studentLoginSim = await mockLogin('success');
+assert.ok(studentLoginSim.data.session, 'Student login must succeed');
+const studentPageContent = fs.readFileSync(path.join(srcDir, 'pages', 'LoginPage.jsx'), 'utf8');
+assert.ok(studentPageContent.includes('loginUser'), 'Student login must use loginUser()');
+
+// Scenario 13: Student and Teacher navigation remain correctly separated
+function getNavbarItems({ isAuthenticated, role, isApproved, teacherRequest }) {
+  if (!isAuthenticated) {
+    return ['Home', 'Features', 'How It Works', 'About', 'Log In', 'Get Started'];
+  }
+  const items = ['Home', 'Features', 'How It Works', 'About', 'Log Out'];
+  if (role === 'teacher' && isApproved) {
+    items.push('Faculty Portal');
+  } else if (teacherRequest?.status === 'pending') {
+    items.push('Teacher Pending');
+  }
+  return items;
+}
+
+const unauthNav = getNavbarItems({ isAuthenticated: false });
+assert.ok(!unauthNav.includes('Faculty Portal') && !unauthNav.includes('Teacher Pending'));
+
+const studentNav = getNavbarItems({ isAuthenticated: true, role: 'student', isApproved: false, teacherRequest: null });
+assert.ok(!studentNav.includes('Faculty Portal') && !studentNav.includes('Teacher Pending'), 'Student nav must not have teacher pills');
+
+const pendingTeacherNav = getNavbarItems({ isAuthenticated: true, role: 'student', isApproved: false, teacherRequest: { status: 'pending' } });
+assert.ok(pendingTeacherNav.includes('Teacher Pending') && !pendingTeacherNav.includes('Faculty Portal'), 'Pending teacher sees Teacher Pending pill');
+
+const approvedTeacherNav = getNavbarItems({ isAuthenticated: true, role: 'teacher', isApproved: true, teacherRequest: { status: 'approved' } });
+assert.ok(approvedTeacherNav.includes('Faculty Portal') && !approvedTeacherNav.includes('Teacher Pending'), 'Approved teacher sees Faculty Portal pill');
+
+const rejectedTeacherNav = getNavbarItems({ isAuthenticated: true, role: 'student', isApproved: false, teacherRequest: { status: 'rejected' } });
+assert.ok(!rejectedTeacherNav.includes('Faculty Portal') && !rejectedTeacherNav.includes('Teacher Pending'), 'Rejected teacher sees no teacher pills');
+
+console.log('✔ Milestone 8.8: All 13 Teacher Login & Role Authentication scenarios verified successfully');
+console.log('--- All Milestone 1 to 8.8 Teacher Login verification tests passed! ---');

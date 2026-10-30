@@ -1,19 +1,26 @@
 /**
  * AttendAI Teacher Login Page Component
- * Milestone 8.7: Teacher Registration and Approval Request
- * UI Correction: Structural layout identical to Student Login (LoginPage.jsx)
+ * Milestone 8.8: Teacher Login and Role-Specific Authentication Experience
+ * UI Parity: Structural layout identical to Student Login (LoginPage.jsx)
  *
- * Implements dedicated sign-in for faculty and educators.
- * Reuses central loginUser() service and AuthContext state.
+ * Implements dedicated sign-in for faculty and educators:
+ * - Authenticates using central loginUser() email/password infrastructure via authenticateTeacher().
+ * - Authorizes against public.profiles database role and is_approved status.
+ * - Handles role-specific login outcomes (Cases A-G).
+ * - Prevents unauthorized session access when role verification fails.
  */
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { BookOpen, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { ErrorMessage } from '../components/common/ErrorMessage';
-import { loginUser, formatAuthError } from '../services/authService';
+import {
+  authenticateTeacher,
+  TEACHER_LOGIN_OUTCOMES,
+  formatAuthError,
+} from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes/routes';
 import './TeacherLoginPage.css';
@@ -22,7 +29,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function TeacherLoginPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, isApproved, role, setAuthSession, logout } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, user, isApproved, role, teacherRequest, setAuthSession, logout } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -31,6 +39,7 @@ export function TeacherLoginPage() {
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
+  const [loginOutcome, setLoginOutcome] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
@@ -47,6 +56,7 @@ export function TeacherLoginPage() {
 
     if (generalError) {
       setGeneralError('');
+      setLoginOutcome(null);
     }
   };
 
@@ -73,6 +83,7 @@ export function TeacherLoginPage() {
     if (isSubmitting) return;
 
     setGeneralError('');
+    setLoginOutcome(null);
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {
@@ -83,24 +94,34 @@ export function TeacherLoginPage() {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await loginUser({
+      const result = await authenticateTeacher({
         email: formData.email,
         password: formData.password,
       });
 
-      if (error) {
-        setGeneralError(formatAuthError(error));
-        setIsSubmitting(false);
+      setLoginOutcome(result.outcome);
+
+      // Case A: Approved Teacher
+      if (result.outcome === TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER) {
+        if (result.data?.session) {
+          await setAuthSession(result.data.session);
+        }
+        const destination = location.state?.from?.pathname || ROUTES.TEACHER_STATUS;
+        navigate(destination, { replace: true });
         return;
       }
 
-      if (data?.session) {
-        await setAuthSession(data.session);
-        // Navigate to teacher status or root
-        navigate(ROUTES.TEACHER_STATUS);
-      } else {
-        navigate(ROUTES.ROOT);
+      // Case B: Pending Teacher
+      if (result.outcome === TEACHER_LOGIN_OUTCOMES.PENDING_TEACHER) {
+        if (result.data?.session) {
+          await setAuthSession(result.data.session);
+        }
+        navigate(ROUTES.TEACHER_STATUS, { replace: true });
+        return;
       }
+
+      // Cases C, D, E, F, G: Access Denied / Error
+      setGeneralError(result.message || 'Authentication failed.');
     } catch (err) {
       setGeneralError(formatAuthError(err));
     } finally {
@@ -125,18 +146,35 @@ export function TeacherLoginPage() {
               <p className="login-authenticated-desc">
                 Signed in as <strong>{user?.email}</strong>
                 <br />
-                Role: <strong>{role || 'Student'}</strong> (
-                {isApproved ? 'Approved Teacher' : 'Pending Approval'})
+                Role: <strong>{role || 'Student'}</strong>{' '}
+                {role === 'teacher' ? (
+                  <span>({isApproved ? 'Approved Teacher' : 'Pending Approval'})</span>
+                ) : teacherRequest?.status === 'pending' ? (
+                  <span>(Teacher Application Pending Approval)</span>
+                ) : teacherRequest?.status === 'rejected' ? (
+                  <span>(Teacher Application Not Approved)</span>
+                ) : null}
               </p>
               <div className="login-authenticated-actions">
-                <Button
-                  variant="primary"
-                  size="md"
-                  type="button"
-                  onClick={() => navigate(ROUTES.TEACHER_STATUS)}
-                >
-                  View Teacher Status
-                </Button>
+                {isApproved || teacherRequest ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    type="button"
+                    onClick={() => navigate(ROUTES.TEACHER_STATUS)}
+                  >
+                    View Teacher Status
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    type="button"
+                    onClick={() => navigate(ROUTES.ROOT)}
+                  >
+                    Return to Homepage
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="md"
@@ -171,9 +209,39 @@ export function TeacherLoginPage() {
               {generalError && (
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                   <ErrorMessage
-                    title="Sign in failed"
+                    title={
+                      loginOutcome === TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE
+                        ? 'Student Account Detected'
+                        : loginOutcome === TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER
+                        ? 'Teacher Application Not Approved'
+                        : loginOutcome === TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE
+                        ? 'Administrator Portal Required'
+                        : 'Sign in failed'
+                    }
                     message={generalError}
                   />
+                  {loginOutcome === TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE && (
+                    <div style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}>
+                      <Link
+                        to={ROUTES.LOGIN}
+                        className="login-footer-link"
+                        style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}
+                      >
+                        Go to Student Sign In &rarr;
+                      </Link>
+                    </div>
+                  )}
+                  {loginOutcome === TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER && (
+                    <div style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}>
+                      <Link
+                        to={ROUTES.LOGIN}
+                        className="login-footer-link"
+                        style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}
+                      >
+                        Continue with Student Sign In &rarr;
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 

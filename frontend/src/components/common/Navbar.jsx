@@ -29,7 +29,7 @@ export function Navbar({
   const [prevPathname, setPrevPathname] = useState('/');
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user, profile, teacherRequest, logout } = useAuth();
+  const { isAuthenticated, user, profile, role, isApproved, teacherRequest, logout } = useAuth();
 
   // Reset mobile menu if pathname changes during navigation
   if (location.pathname !== prevPathname) {
@@ -190,7 +190,15 @@ export function Navbar({
           <div className="navbar__actions">
             {isAuthenticated ? (
               <div className="navbar__user-actions">
-                {teacherRequest?.status === 'pending' && (
+                {role === 'teacher' && isApproved ? (
+                  <Link
+                    to={ROUTES.TEACHER_STATUS}
+                    className="navbar__teacher-pill"
+                    title="Faculty Portal"
+                  >
+                    Faculty Portal
+                  </Link>
+                ) : teacherRequest?.status === 'pending' ? (
                   <Link
                     to={ROUTES.TEACHER_STATUS}
                     className="navbar__pending-pill"
@@ -198,7 +206,7 @@ export function Navbar({
                   >
                     Teacher Pending
                   </Link>
-                )}
+                ) : null}
                 <div className="navbar__user-badge" title={user?.email || 'Authenticated User'}>
                   <User size={14} aria-hidden="true" />
                   <span className="navbar__user-name">{displayName}</span>
@@ -294,7 +302,28 @@ export function Navbar({
                     <User size={16} aria-hidden="true" />
                     <span className="navbar__mobile-user-name">{displayName}</span>
                     <span className="navbar__mobile-user-email">{user?.email}</span>
+                    {role === 'teacher' && isApproved && (
+                      <span className="navbar__mobile-role-badge">Faculty Member</span>
+                    )}
                   </div>
+                  {role === 'teacher' && isApproved && (
+                    <Link
+                      to={ROUTES.TEACHER_STATUS}
+                      className="navbar__mobile-link"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Faculty Portal →
+                    </Link>
+                  )}
+                  {teacherRequest?.status === 'pending' && !isApproved && (
+                    <Link
+                      to={ROUTES.TEACHER_STATUS}
+                      className="navbar__mobile-link"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Teacher Application Status (Pending) →
+                    </Link>
+                  )}
                   <Button
                     variant="outline"
                     size="md"
