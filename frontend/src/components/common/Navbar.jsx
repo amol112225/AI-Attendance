@@ -29,7 +29,7 @@ export function Navbar({
   const [prevPathname, setPrevPathname] = useState('/');
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, profile, logout } = useAuth();
 
   // Reset mobile menu if pathname changes during navigation
   if (location.pathname !== prevPathname) {
@@ -135,8 +135,10 @@ export function Navbar({
     navigate(ROUTES.ROOT);
   };
 
-  // Derive readable user display identifier (full_name fallback to email prefix or email)
+  // Derive readable user display identifier:
+  // Prefer validated profile.full_name, then user_metadata.full_name, then email prefix
   const displayName =
+    profile?.full_name ||
     user?.user_metadata?.full_name ||
     (user?.email ? user.email.split('@')[0] : 'User');
 

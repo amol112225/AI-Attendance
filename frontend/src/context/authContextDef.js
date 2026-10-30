@@ -8,10 +8,14 @@ import { createContext } from 'react';
 export const AuthContext = createContext({
   user: null,
   session: null,
+  profile: null,
+  role: null,
+  isApproved: false,
   loading: true,
   isAuthenticated: false,
   logout: async () => {},
   setAuthSession: () => {},
+  refreshProfile: async () => {},
 });
 
 export default AuthContext;

@@ -10,14 +10,37 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getSession, onAuthStateChange, logoutUser } from '../services/authService';
+import { getSession, onAuthStateChange, logoutUser, getUserProfile } from '../services/authService';
 import { AuthContext } from './authContextDef';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Helper to safely load profile for an authenticated user ID without throwing
+  const loadProfile = useCallback(async (userId) => {
+    if (!userId) {
+      setProfile(null);
+      return null;
+    }
+    try {
+      const { profile: loadedProfile, error } = await getUserProfile(userId);
+      if (!error && loadedProfile) {
+        setProfile(loadedProfile);
+        return loadedProfile;
+      }
+      // If query fails or profile row not found yet, keep profile null
+      // while preserving session and user authentication
+      setProfile(null);
+      return null;
+    } catch {
+      setProfile(null);
+      return null;
+    }
+  }, []);
 
   // Restore initial session on application mount
   useEffect(() => {
@@ -27,18 +50,21 @@ export function AuthProvider({ children }) {
       try {
         const { session: initialSession, error } = await getSession();
         if (isMounted) {
-          if (!error && initialSession) {
+          if (!error && initialSession?.user) {
             setSession(initialSession);
-            setUser(initialSession.user ?? null);
+            setUser(initialSession.user);
+            await loadProfile(initialSession.user.id);
           } else {
             setSession(null);
             setUser(null);
+            setProfile(null);
           }
         }
       } catch {
         if (isMounted) {
           setSession(null);
           setUser(null);
+          setProfile(null);
         }
       } finally {
         if (isMounted) {
@@ -50,15 +76,17 @@ export function AuthProvider({ children }) {
     initializeAuth();
 
     // Listen to Supabase auth events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED)
-    const { unsubscribe } = onAuthStateChange((_event, currentSession) => {
+    const { unsubscribe } = onAuthStateChange(async (_event, currentSession) => {
       if (!isMounted) return;
 
-      if (currentSession) {
+      if (currentSession?.user) {
         setSession(currentSession);
-        setUser(currentSession.user ?? null);
+        setUser(currentSession.user);
+        await loadProfile(currentSession.user.id);
       } else {
         setSession(null);
         setUser(null);
+        setProfile(null);
       }
       setLoading(false);
     });
@@ -67,14 +95,28 @@ export function AuthProvider({ children }) {
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [loadProfile]);
 
   // Update session directly (e.g., immediately after login or registration)
-  const setAuthSession = useCallback((newSession) => {
+  const setAuthSession = useCallback(async (newSession) => {
     setSession(newSession);
-    setUser(newSession?.user ?? null);
+    const currentUser = newSession?.user ?? null;
+    setUser(currentUser);
+    if (currentUser?.id) {
+      await loadProfile(currentUser.id);
+    } else {
+      setProfile(null);
+    }
     setLoading(false);
-  }, []);
+  }, [loadProfile]);
+
+  // Manual trigger to refresh profile data (e.g. after administrative role changes)
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      return await loadProfile(user.id);
+    }
+    return null;
+  }, [user, loadProfile]);
 
   // Logout handler
   const logout = useCallback(async () => {
@@ -84,10 +126,12 @@ export function AuthProvider({ children }) {
       await logoutUser();
       setSession(null);
       setUser(null);
+      setProfile(null);
     } catch {
       // Clear local state even if network call fails
       setSession(null);
       setUser(null);
+      setProfile(null);
     } finally {
       setIsLoggingOut(false);
     }
@@ -97,12 +141,16 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       session,
+      profile,
+      role: profile?.role || null,
+      isApproved: Boolean(profile?.is_approved),
       loading,
       isAuthenticated: Boolean(session && user),
       logout,
       setAuthSession,
+      refreshProfile,
     }),
-    [user, session, loading, logout, setAuthSession]
+    [user, session, profile, loading, logout, setAuthSession, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

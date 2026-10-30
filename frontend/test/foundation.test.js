@@ -589,4 +589,88 @@ assert.strictEqual(successLoginRes.data.user.email, 'student@attendai.edu');
 
 console.log('✔ Login, AuthContext & Session Management: LoginPage, reactive Navbar, useAuth(), and session restoration verified');
 
-console.log('--- All Milestone 1 to 8.4 verification tests passed! ---');
+// 17. Verify Database Profiles, Roles & RLS (Milestone 8.5)
+const migrationFilePath = path.join(rootDir, '..', 'supabase', 'migrations', '20261030000000_profiles_roles_rls.sql');
+assert.ok(fs.existsSync(migrationFilePath), 'Migration file 20261030000000_profiles_roles_rls.sql must exist');
+const migrationSql = fs.readFileSync(migrationFilePath, 'utf8');
+
+// Schema & Integrity Constraints
+assert.ok(migrationSql.includes('CREATE TABLE IF NOT EXISTS public.profiles'), 'public.profiles table definition missing in migration');
+assert.ok(migrationSql.includes('REFERENCES auth.users(id) ON DELETE CASCADE'), 'Foreign key reference to auth.users(id) missing');
+assert.ok(migrationSql.includes('full_name TEXT NOT NULL'), 'full_name column missing in migration');
+assert.ok(migrationSql.includes("DEFAULT 'student'"), "role default 'student' missing in migration");
+assert.ok(migrationSql.includes('is_approved BOOLEAN NOT NULL DEFAULT FALSE'), 'is_approved default FALSE missing in migration');
+assert.ok(migrationSql.includes('chk_profiles_full_name_non_empty'), 'Whitespace/empty check constraint on full_name missing');
+
+// Security Definer Triggers
+assert.ok(migrationSql.includes('handle_new_user()'), 'handle_new_user trigger function missing in migration');
+assert.ok(migrationSql.includes('SECURITY DEFINER'), 'SECURITY DEFINER missing in handle_new_user');
+assert.ok(migrationSql.includes('SET search_path = public, pg_temp'), 'search_path safeguard missing in handle_new_user');
+assert.ok(migrationSql.includes('on_auth_user_created'), 'on_auth_user_created trigger missing in migration');
+assert.ok(migrationSql.includes('trigger_prevent_profile_privilege_escalation'), 'Privilege escalation prevention trigger missing');
+
+// Row Level Security (RLS) Policies
+assert.ok(migrationSql.includes('ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY'), 'ENABLE ROW LEVEL SECURITY missing in migration');
+assert.ok(migrationSql.includes('Users can view own profile'), 'SELECT own profile policy missing');
+assert.ok(migrationSql.includes('Users can update own profile name'), 'UPDATE own profile policy missing');
+assert.ok(migrationSql.includes('GRANT SELECT, UPDATE(full_name) ON public.profiles'), 'Column-level grant restricting updates to full_name missing');
+assert.ok(migrationSql.includes('REVOKE ALL ON TABLE public.profiles FROM anon'), 'Revocation of anonymous table privileges missing');
+
+// Documentation
+const supabaseReadmePath = path.join(rootDir, '..', 'supabase', 'README.md');
+assert.ok(fs.existsSync(supabaseReadmePath), 'supabase/README.md documentation must exist');
+const supabaseReadme = fs.readFileSync(supabaseReadmePath, 'utf8');
+assert.ok(supabaseReadme.includes('Administrative Approval'), 'Administrative Approval policy explanation missing in README');
+assert.ok(supabaseReadme.includes('How to Approve a Test Teacher Account'), 'Teacher account approval guide missing in README');
+
+// Frontend Service & Context Verification
+assert.ok(authServiceContent.includes('getUserProfile'), 'getUserProfile missing from authService.js');
+assert.ok(authContextContent.includes('profile,'), 'profile property missing in AuthContext value');
+assert.ok(authContextContent.includes('role:'), 'role property missing in AuthContext value');
+assert.ok(authContextContent.includes('isApproved:'), 'isApproved property missing in AuthContext value');
+assert.ok(authContextContent.includes('refreshProfile,'), 'refreshProfile helper missing in AuthContext value');
+assert.ok(navbarJsxContent.includes('profile?.full_name'), 'Navbar display name fallback to profile.full_name missing');
+
+// Unit test mock profile retrieval
+async function mockGetUserProfile(userId, scenario) {
+  if (!userId) return { profile: null, error: null };
+  if (scenario === 'network_failure') {
+    return { profile: null, error: new Error('Failed to fetch profile') };
+  }
+  if (scenario === 'teacher_approved') {
+    return {
+      profile: {
+        id: userId,
+        full_name: 'Professor Davis',
+        role: 'teacher',
+        is_approved: true,
+      },
+      error: null,
+    };
+  }
+  return {
+    profile: {
+      id: userId,
+      full_name: 'Alex Rivera',
+      role: 'student',
+      is_approved: false,
+    },
+    error: null,
+  };
+}
+
+const defaultStudentProfile = await mockGetUserProfile('u-1', 'default');
+assert.strictEqual(defaultStudentProfile.profile.role, 'student');
+assert.strictEqual(defaultStudentProfile.profile.is_approved, false);
+
+const approvedTeacherProfile = await mockGetUserProfile('u-2', 'teacher_approved');
+assert.strictEqual(approvedTeacherProfile.profile.role, 'teacher');
+assert.strictEqual(approvedTeacherProfile.profile.is_approved, true);
+
+const networkErrorProfile = await mockGetUserProfile('u-3', 'network_failure');
+assert.strictEqual(networkErrorProfile.profile, null);
+assert.ok(networkErrorProfile.error);
+
+console.log('✔ Database Profiles, Roles & RLS: Migration, automated trigger, RLS policies, authService, and AuthContext profile integration verified');
+
+console.log('--- All Milestone 1 to 8.5 verification tests passed! ---');

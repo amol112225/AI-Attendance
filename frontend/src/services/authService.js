@@ -164,6 +164,27 @@ export async function getUser() {
 }
 
 /**
+ * Fetch the authenticated user's profile from public.profiles.
+ * Relies strictly on Supabase RLS policies (auth.uid() = id).
+ *
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<{profile: Object|null, error: Error|null}>}
+ */
+export async function getUserProfile(userId) {
+  if (!isSupabaseConfigured() || !userId) {
+    return { profile: null, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, role, is_approved, created_at, updated_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  return { profile: data || null, error };
+}
+
+/**
  * Subscribe to authentication state changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.).
  *
  * @param {Function} callback (event, session) => void
@@ -189,6 +210,7 @@ export const authService = {
   logoutUser,
   getSession,
   getUser,
+  getUserProfile,
   onAuthStateChange,
 };
 
