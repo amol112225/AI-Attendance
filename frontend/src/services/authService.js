@@ -96,6 +96,136 @@ export async function registerUser({ email, password, fullName }) {
 }
 
 /**
+ * Register a new user requesting the Teacher role.
+ * Milestone 8.7: Teacher Registration & Approval Request
+ *
+ * CRITICAL SECURITY RULE:
+ * A user NEVER receives the 'teacher' role simply by registering through this page.
+ * The profile role is strictly initialized to 'student' with is_approved = FALSE.
+ * The requested_role metadata triggers a pending teacher_registration_requests record.
+ *
+ * @param {Object} params
+ * @param {string} params.email
+ * @param {string} params.password
+ * @param {string} params.fullName
+ * @returns {Promise<{data: Object|null, error: Error|null, isConfirmationRequired: boolean}>}
+ */
+export async function registerTeacher({ email, password, fullName }) {
+  if (!isSupabaseConfigured()) {
+    return {
+      data: null,
+      error: new Error('Authentication service is currently unconfigured.'),
+      isConfirmationRequired: false,
+    };
+  }
+
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanName = (fullName || '').trim();
+
+  // Enforce Option B & Milestone 8.7:
+  // Role defaults to 'student' in public.profiles.
+  // requested_role: 'teacher' signals application intent to create a pending request.
+  const { data, error } = await supabase.auth.signUp({
+    email: cleanEmail,
+    password,
+    options: {
+      data: {
+        full_name: cleanName,
+        role: 'student',
+        requested_role: 'teacher',
+      },
+    },
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error,
+      isConfirmationRequired: false,
+    };
+  }
+
+  const isConfirmationRequired = Boolean(data?.user && !data?.session);
+
+  // If signup immediately creates a session (email confirmation disabled),
+  // ensure the teacher approval request is submitted safely
+  if (data?.session && data?.user?.id) {
+    try {
+      await submitTeacherRegistrationRequest(data.user.id);
+    } catch {
+      // Non-blocking: trigger already created or can be submitted on status check
+    }
+  }
+
+  return {
+    data,
+    error: null,
+    isConfirmationRequired,
+  };
+}
+
+/**
+ * Submit a teacher registration approval request for an authenticated user.
+ * Milestone 8.7: Teacher Registration and Approval Request
+ *
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<{data: Object|null, error: Error|null}>}
+ */
+export async function submitTeacherRegistrationRequest(userId) {
+  if (!isSupabaseConfigured() || !userId) {
+    return { data: null, error: new Error('User session or Supabase is unconfigured.') };
+  }
+
+  // Check if a pending request already exists to prevent duplicate pending submissions
+  const { data: existing } = await supabase
+    .from('teacher_registration_requests')
+    .select('id, status, created_at')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existing) {
+    return { data: existing, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('teacher_registration_requests')
+    .insert([
+      {
+        user_id: userId,
+        status: 'pending',
+      },
+    ])
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+/**
+ * Query the latest teacher registration request status for an authenticated user.
+ * Milestone 8.7: Teacher Registration Status
+ *
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<{request: Object|null, error: Error|null}>}
+ */
+export async function getTeacherRegistrationRequest(userId) {
+  if (!isSupabaseConfigured() || !userId) {
+    return { request: null, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('teacher_registration_requests')
+    .select('id, user_id, status, created_at, updated_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return { request: data || null, error };
+}
+
+/**
  * Sign in an existing user with email and password.
  *
  * @param {Object} params
@@ -206,6 +336,9 @@ export function onAuthStateChange(callback) {
 export const authService = {
   formatAuthError,
   registerUser,
+  registerTeacher,
+  submitTeacherRegistrationRequest,
+  getTeacherRegistrationRequest,
   loginUser,
   logoutUser,
   getSession,

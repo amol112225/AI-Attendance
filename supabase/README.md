@@ -54,7 +54,9 @@ Row Level Security is enabled on `public.profiles`:
    [`supabase/migrations/20261030000000_profiles_roles_rls.sql`](./migrations/20261030000000_profiles_roles_rls.sql)
 5. To apply the non-recursive RLS policy update and privilege escalation trigger fix, run:
    [`supabase/migrations/20261030010000_fix_profile_update_rls.sql`](./migrations/20261030010000_fix_profile_update_rls.sql)
-6. Ensure the message states `Success. No rows returned`.
+6. To apply the Teacher Registration Requests table, constraints, and RLS policies (Milestone 8.7), run:
+   [`supabase/migrations/20261030020000_teacher_registration_requests.sql`](./migrations/20261030020000_teacher_registration_requests.sql)
+7. Ensure the message states `Success. No rows returned`.
 
 ### Option B: Using the Supabase CLI (Local Development)
 ```bash
@@ -121,7 +123,41 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
 
 ---
 
-## 7. How to Verify Role Tampering Prevention
+## 8. Milestone 8.7: Teacher Registration Requests & Approval Workflow
+
+The `public.teacher_registration_requests` table stores requests from educators applying for the Teacher role:
+
+| Column | Type | Default | Description |
+|---|---|---|---|
+| `id` | `uuid` | Primary Key | Auto-generated UUID. |
+| `user_id` | `uuid` | Foreign Key | References `auth.users(id)` with `ON DELETE CASCADE`. |
+| `status` | `text` | `'pending'` | Status constraint: `pending`, `approved`, or `rejected`. |
+| `created_at` | `timestamptz` | `NOW()` | Request submission timestamp. |
+| `updated_at` | `timestamptz` | `NOW()` | Timestamp refreshed on administrative update. |
+
+### Security Safeguards
+- **Unique Pending Request Constraint**: The partial unique index `uq_teacher_pending_requests` prevents duplicate pending requests for the same user.
+- **Client Modification Prohibition**: `UPDATE` and `DELETE` on `teacher_registration_requests` are revoked for `authenticated`. The `trigger_prevent_teacher_request_tampering` trigger raises a PostgreSQL exception if any client tries to modify status.
+- **Admin Approval SQL**:
+  To approve a pending teacher request:
+  ```sql
+  -- Step 1: Mark request as approved
+  UPDATE public.teacher_registration_requests
+  SET status = 'approved', updated_at = NOW()
+  WHERE user_id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
+
+  -- Step 2: Elevate user profile to teacher role and approved status
+  UPDATE public.profiles
+  SET role = 'teacher', is_approved = true, updated_at = NOW()
+  WHERE id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
+  ```
+  To reject a pending teacher request:
+  ```sql
+  UPDATE public.teacher_registration_requests
+  SET status = 'rejected', updated_at = NOW()
+  WHERE user_id = (SELECT id FROM auth.users WHERE email = 'applicant@attendai.edu');
+  ```
+
 
 To verify that ordinary users cannot elevate their role or approve themselves via the client API, execute this test in the browser console while signed in as a normal student:
 

@@ -1,0 +1,307 @@
+/**
+ * AttendAI Teacher Registration Page Styles
+ * Milestone 8.7: Teacher Registration and Approval Request
+ */
+
+.teacher-register-page {
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-16);
+  min-height: calc(100vh - 64px - 140px);
+  display: flex;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .teacher-register-page {
+    padding-top: var(--space-12);
+  }
+}
+
+.teacher-register-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6) var(--space-5);
+  box-shadow: var(--shadow-lg);
+  max-width: 500px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 480px) {
+  .teacher-register-card {
+    padding: var(--space-8) var(--space-8);
+  }
+}
+
+/* Role Selector Tabs */
+.auth-role-tabs {
+  display: flex;
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  margin-bottom: var(--space-6);
+  gap: 4px;
+}
+
+.auth-role-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.auth-role-tab:hover {
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.auth-role-tab--active {
+  background-color: var(--color-bg-surface);
+  color: var(--color-brand-cyan);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border-default);
+}
+
+/* Header */
+.teacher-register-header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.teacher-register-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand-purple);
+  background-color: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-3);
+}
+
+.teacher-register-title {
+  font-size: var(--font-size-2xl);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.teacher-register-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+/* Form Styles */
+.teacher-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.teacher-register-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.teacher-register-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.teacher-register-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.teacher-register-input {
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3-5);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-default),
+              box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.teacher-register-input:focus {
+  border-color: var(--color-brand-purple);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
+
+.teacher-register-input--error {
+  border-color: var(--color-feedback-error);
+}
+
+.teacher-register-input--error:focus {
+  border-color: var(--color-feedback-error);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.teacher-register-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.teacher-register-field-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.teacher-register-field-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-feedback-error);
+  margin-top: 2px;
+}
+
+/* Policy Notice Box */
+.teacher-register-policy-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3-5) var(--space-4);
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-lg);
+  color: var(--color-feedback-warning);
+}
+
+.teacher-register-policy-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.teacher-register-policy-text {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.teacher-register-policy-text strong {
+  color: var(--color-feedback-warning);
+}
+
+/* Actions */
+.teacher-register-actions {
+  margin-top: var(--space-2);
+}
+
+.teacher-register-actions button {
+  width: 100%;
+}
+
+/* Footer */
+.teacher-register-footer {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.teacher-register-footer-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.teacher-register-footer-link {
+  color: var(--color-brand-cyan);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.teacher-register-footer-link:hover {
+  color: var(--color-brand-cyan-light);
+  text-decoration: underline;
+}
+
+/* Success Card */
+.teacher-success-card {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.teacher-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+}
+
+.teacher-success-icon--confirmation {
+  background-color: var(--color-brand-cyan-subtle);
+  color: var(--color-brand-cyan);
+  border: 1px solid var(--color-border-cyan);
+}
+
+.teacher-success-icon--active {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: var(--color-feedback-warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.teacher-success-title {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.teacher-success-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-6);
+}
+
+.teacher-success-highlight {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.teacher-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .teacher-success-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}

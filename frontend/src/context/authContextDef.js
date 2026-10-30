@@ -14,10 +14,13 @@ export const AuthContext = createContext({
   loading: true,
   profileLoading: false,
   profileError: null,
+  teacherRequest: null,
+  teacherRequestLoading: false,
   isAuthenticated: false,
   logout: async () => {},
   setAuthSession: () => {},
   refreshProfile: async () => {},
+  refreshTeacherRequest: async () => {},
 });
 
 export default AuthContext;

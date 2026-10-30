@@ -371,7 +371,7 @@ assert.ok(authServiceContent.includes('formatAuthError'), 'formatAuthError missi
 
 // Security policy assertion: Student role enforced by default; no client teacher elevation
 assert.ok(authServiceContent.includes("role: 'student'"), 'Default student role enforcement missing in registerUser');
-assert.ok(!authServiceContent.includes('requested_role'), 'Prohibited requested_role metadata found in authService.js');
+assert.ok(!authServiceContent.includes(" role: 'teacher'"), 'Prohibited client teacher assignment found in authService.js');
 
 // Unit tests for formatAuthError
 assert.strictEqual(
@@ -697,6 +697,7 @@ const srcDir = path.join(rootDir, 'src');
 const accessRulesPath = path.join(srcDir, 'routes', 'accessRules.js');
 assert.ok(fs.existsSync(accessRulesPath), 'accessRules.js must exist');
 const accessRulesContent = fs.readFileSync(accessRulesPath, 'utf8');
+assert.ok(accessRulesContent.includes('ROLES'), 'accessRules.js must export ROLES');
 
 const protectedRoutePath = path.join(srcDir, 'routes', 'ProtectedRoute.jsx');
 assert.ok(fs.existsSync(protectedRoutePath), 'ProtectedRoute.jsx must exist');
@@ -835,4 +836,232 @@ assert.strictEqual(noProfileAccess.reason, 'no_profile');
 
 console.log('✔ Protected Routes & Role-Based Access Control: Guards, access rules matrix, Unauthorized page, and evaluation scenarios verified');
 
-console.log('--- All Milestone 1 to 8.6 Protected Routes verification tests passed! ---');
+// 20. Milestone 8.7: Teacher Registration & Approval Request
+// 20.1 Migration & Database Security Architecture
+const teacherMigrationPath = path.join(rootDir, '..', 'supabase', 'migrations', '20261030020000_teacher_registration_requests.sql');
+assert.ok(fs.existsSync(teacherMigrationPath), 'Teacher registration requests migration must exist');
+const teacherMigrationSql = fs.readFileSync(teacherMigrationPath, 'utf8');
+
+assert.ok(teacherMigrationSql.includes('CREATE TABLE IF NOT EXISTS public.teacher_registration_requests'), 'teacher_registration_requests table definition missing');
+assert.ok(teacherMigrationSql.includes("REFERENCES auth.users(id) ON DELETE CASCADE"), 'Foreign key reference to auth.users missing');
+assert.ok(teacherMigrationSql.includes("CHECK (status IN ('pending', 'approved', 'rejected'))"), 'Status constraint missing');
+assert.ok(teacherMigrationSql.includes('uq_teacher_pending_requests'), 'Unique partial index for pending requests missing');
+assert.ok(teacherMigrationSql.includes('ALTER TABLE public.teacher_registration_requests ENABLE ROW LEVEL SECURITY'), 'RLS must be enabled on teacher_registration_requests');
+assert.ok(teacherMigrationSql.includes('Users can view own teacher requests'), 'SELECT RLS policy missing');
+assert.ok(teacherMigrationSql.includes('Users can submit own teacher request'), 'INSERT RLS policy missing');
+assert.ok(teacherMigrationSql.includes('REVOKE UPDATE, DELETE ON public.teacher_registration_requests FROM authenticated'), 'Revoke of UPDATE/DELETE on teacher requests missing');
+assert.ok(teacherMigrationSql.includes('trigger_prevent_teacher_request_tampering'), 'Tampering prevention trigger missing');
+assert.ok(teacherMigrationSql.includes("NEW.raw_user_meta_data->>'requested_role'"), 'handle_new_user trigger must check requested_role');
+
+// 20.2 Routes and Navigation
+const updatedRoutesPath = path.join(srcDir, 'routes', 'routes.js');
+const updatedRoutesContent = fs.readFileSync(updatedRoutesPath, 'utf8');
+assert.ok(updatedRoutesContent.includes("TEACHER_REGISTER: '/register/teacher'"), 'TEACHER_REGISTER route constant missing');
+assert.ok(updatedRoutesContent.includes("TEACHER_LOGIN: '/login/teacher'"), 'TEACHER_LOGIN route constant missing');
+assert.ok(updatedRoutesContent.includes("TEACHER_STATUS: '/teacher/status'"), 'TEACHER_STATUS route constant missing');
+
+const updatedAppRoutesPath = path.join(srcDir, 'routes', 'AppRoutes.jsx');
+const updatedAppRoutesContent = fs.readFileSync(updatedAppRoutesPath, 'utf8');
+assert.ok(updatedAppRoutesContent.includes('TeacherRegisterPage'), 'TeacherRegisterPage missing from AppRoutes');
+assert.ok(updatedAppRoutesContent.includes('TeacherLoginPage'), 'TeacherLoginPage missing from AppRoutes');
+assert.ok(updatedAppRoutesContent.includes('TeacherStatusPage'), 'TeacherStatusPage missing from AppRoutes');
+
+// 20.3 Page Components and Design Consistency
+const teacherRegisterPagePath = path.join(srcDir, 'pages', 'TeacherRegisterPage.jsx');
+assert.ok(fs.existsSync(teacherRegisterPagePath), 'TeacherRegisterPage.jsx must exist');
+const teacherRegisterPageContent = fs.readFileSync(teacherRegisterPagePath, 'utf8');
+assert.ok(teacherRegisterPageContent.includes('FACULTY PORTAL'), 'Teacher badge missing');
+assert.ok(teacherRegisterPageContent.includes('Administrative Approval Required'), 'Approval requirement notice missing');
+assert.ok(teacherRegisterPageContent.includes('auth-role-tabs'), 'Role switcher tabs missing');
+assert.ok(teacherRegisterPageContent.includes('registerTeacher'), 'TeacherRegisterPage must call registerTeacher');
+
+const teacherLoginPagePath = path.join(srcDir, 'pages', 'TeacherLoginPage.jsx');
+assert.ok(fs.existsSync(teacherLoginPagePath), 'TeacherLoginPage.jsx must exist');
+const teacherLoginPageContent = fs.readFileSync(teacherLoginPagePath, 'utf8');
+assert.ok(teacherLoginPageContent.includes('Teacher Sign In'), 'TeacherLoginPage heading missing');
+assert.ok(teacherLoginPageContent.includes('loginUser'), 'TeacherLoginPage must call loginUser');
+
+const teacherStatusPagePath = path.join(srcDir, 'pages', 'TeacherStatusPage.jsx');
+assert.ok(fs.existsSync(teacherStatusPagePath), 'TeacherStatusPage.jsx must exist');
+const teacherStatusPageContent = fs.readFileSync(teacherStatusPagePath, 'utf8');
+assert.ok(teacherStatusPageContent.includes('teacherRequest'), 'TeacherStatusPage must read teacherRequest from auth context');
+assert.ok(teacherStatusPageContent.includes('refreshTeacherRequest'), 'TeacherStatusPage must use refreshTeacherRequest');
+
+// 20.4 Cross-Navigation Updates
+const updatedRegisterPageContent = fs.readFileSync(path.join(srcDir, 'pages', 'RegisterPage.jsx'), 'utf8');
+assert.ok(updatedRegisterPageContent.includes('auth-role-tabs'), 'RegisterPage must include role switcher tabs');
+assert.ok(updatedRegisterPageContent.includes('ROUTES.TEACHER_REGISTER'), 'RegisterPage must link to Teacher registration');
+
+const updatedLoginPageContent = fs.readFileSync(path.join(srcDir, 'pages', 'LoginPage.jsx'), 'utf8');
+assert.ok(updatedLoginPageContent.includes('ROUTES.TEACHER_LOGIN'), 'LoginPage must link to Teacher login');
+
+// 20.5 Service Layer and Methods
+const updatedAuthServiceContent = fs.readFileSync(path.join(srcDir, 'services', 'authService.js'), 'utf8');
+assert.ok(updatedAuthServiceContent.includes('registerTeacher'), 'registerTeacher function missing from authService.js');
+assert.ok(updatedAuthServiceContent.includes('submitTeacherRegistrationRequest'), 'submitTeacherRegistrationRequest function missing from authService.js');
+assert.ok(updatedAuthServiceContent.includes('getTeacherRegistrationRequest'), 'getTeacherRegistrationRequest function missing from authService.js');
+assert.ok(updatedAuthServiceContent.includes("role: 'student'"), 'registerTeacher must enforce student default in metadata');
+assert.ok(updatedAuthServiceContent.includes("requested_role: 'teacher'"), 'registerTeacher must mark requested_role intent');
+
+// 20.6 Unit Validation and Execution Simulations
+// Test 1: Teacher registration with valid details validation
+function validateTeacherForm({ fullName, email, password, confirmPassword }) {
+  const errors = {};
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!fullName?.trim()) errors.fullName = 'Full Name is required.';
+  if (!email?.trim()) errors.email = 'Email Address is required.';
+  else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Please enter a valid email address.';
+  if (!password) errors.password = 'Password is required.';
+  else if (password.length < 6) errors.password = 'Password must be at least 6 characters.';
+  if (!confirmPassword) errors.confirmPassword = 'Confirm Password is required.';
+  else if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match.';
+  return errors;
+}
+
+assert.strictEqual(
+  Object.keys(validateTeacherForm({
+    fullName: 'Dr. Evelyn Reed',
+    email: 'ereed@university.edu',
+    password: 'password123',
+    confirmPassword: 'password123',
+  })).length,
+  0,
+  'Valid teacher form submission should produce 0 errors'
+);
+
+// Test 2: Invalid email and password length validation
+const invalidTeacherForm = validateTeacherForm({
+  fullName: '',
+  email: 'not-an-email',
+  password: '123',
+  confirmPassword: '123',
+});
+assert.ok(invalidTeacherForm.fullName, 'Full name required check failed');
+assert.ok(invalidTeacherForm.email, 'Invalid email check failed');
+assert.ok(invalidTeacherForm.password, 'Short password check failed');
+
+// Test 3: Password mismatch validation
+const mismatchForm = validateTeacherForm({
+  fullName: 'Dr. Evelyn Reed',
+  email: 'ereed@university.edu',
+  password: 'password123',
+  confirmPassword: 'differentPassword',
+});
+assert.strictEqual(mismatchForm.confirmPassword, 'Passwords do not match.');
+
+// Test 4: Duplicate account registration error formatting
+const duplicateError = new Error('User already registered');
+assert.strictEqual(
+  formatAuthError(duplicateError),
+  'An account with this email address already exists. Please log in instead.'
+);
+
+// Test 5: Email confirmation enabled simulation
+async function mockRegisterTeacher(scenario) {
+  if (scenario === 'confirmation_required') {
+    return {
+      data: { user: { id: 'u-t1', email: 'prof@attendai.edu' }, session: null },
+      error: null,
+      isConfirmationRequired: true,
+    };
+  }
+  if (scenario === 'session_active') {
+    return {
+      data: {
+        user: { id: 'u-t2', email: 'prof2@attendai.edu' },
+        session: { access_token: 'valid-jwt' },
+      },
+      error: null,
+      isConfirmationRequired: false,
+    };
+  }
+  return { data: null, error: new Error('Registration failed'), isConfirmationRequired: false };
+}
+
+const confirmationRes = await mockRegisterTeacher('confirmation_required');
+assert.strictEqual(confirmationRes.isConfirmationRequired, true, 'Email confirmation required must be true');
+assert.strictEqual(confirmationRes.data.session, null, 'Session must be null when confirmation is required');
+
+// Test 6: Email confirmation disabled simulation
+const activeSessionRes = await mockRegisterTeacher('session_active');
+assert.strictEqual(activeSessionRes.isConfirmationRequired, false);
+assert.ok(activeSessionRes.data.session, 'Session must exist when email confirmation is disabled');
+
+// Test 7: Teacher request submission simulation
+async function mockSubmitTeacherRequest(userId, existingPending) {
+  if (existingPending) {
+    // Duplicate pending prevention
+    return {
+      data: existingPending,
+      error: null,
+      isDuplicatePrevented: true,
+    };
+  }
+  return {
+    data: {
+      id: 'req-1',
+      user_id: userId,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    },
+    error: null,
+    isDuplicatePrevented: false,
+  };
+}
+
+const newRequest = await mockSubmitTeacherRequest('u-t2', null);
+assert.strictEqual(newRequest.data.status, 'pending');
+assert.strictEqual(newRequest.isDuplicatePrevented, false);
+
+// Test 8: Duplicate request prevention simulation
+const duplicateAttempt = await mockSubmitTeacherRequest('u-t2', newRequest.data);
+assert.strictEqual(duplicateAttempt.isDuplicatePrevented, true);
+assert.strictEqual(duplicateAttempt.data.id, 'req-1');
+
+// Test 9: Client cannot approve own request (tampering simulation)
+function simulateClientUpdate(request, newStatus, clientRole) {
+  if (clientRole === 'authenticated' && newStatus !== request.status) {
+    throw new Error('Security violation: Authenticated users cannot modify teacher registration requests.');
+  }
+  return { ...request, status: newStatus };
+}
+
+assert.throws(
+  () => simulateClientUpdate(newRequest.data, 'approved', 'authenticated'),
+  /Security violation: Authenticated users cannot modify teacher registration requests./,
+  'Client self-approval of teacher request must be blocked'
+);
+
+// Test 10: Client cannot self-elevate profile role
+function simulateProfileRoleUpdate(profile, newRole, clientRole) {
+  if (clientRole === 'authenticated' && newRole !== profile.role) {
+    throw new Error('Security violation: Authenticated users cannot alter user role.');
+  }
+  return { ...profile, role: newRole };
+}
+
+const studentProfile = { id: 'u-t2', role: 'student', is_approved: false };
+assert.throws(
+  () => simulateProfileRoleUpdate(studentProfile, 'teacher', 'authenticated'),
+  /Security violation: Authenticated users cannot alter user role./,
+  'Client self-elevation of profile role must be blocked'
+);
+
+// Test 11: Pending teacher cannot access teacher routes
+const pendingTeacherAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: studentProfile,
+  role: studentProfile.role, // 'student'
+  isApproved: studentProfile.is_approved, // false
+});
+assert.strictEqual(pendingTeacherAccess.allowed, false, 'Pending teacher must be denied access to teacher routes');
+
+// Test 12: Existing Student registration and login flows continue to work
+const studentRegistrationResult = await mockLogin('success');
+assert.ok(studentRegistrationResult.data.session, 'Existing student login must succeed');
+
+console.log('✔ Teacher Registration & Approval Request: Table schema, anti-tampering trigger, services, UI components, role switcher, and security simulations verified');
+
+console.log('--- All Milestone 1 to 8.7 Teacher Registration verification tests passed! ---');

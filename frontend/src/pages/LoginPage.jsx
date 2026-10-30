@@ -239,12 +239,18 @@ export function LoginPage() {
                 </div>
               </form>
 
-              {/* Registration Link */}
+              {/* Registration and Teacher Login Links */}
               <footer className="login-footer">
                 <p className="login-footer-text">
                   Don't have an account yet?{' '}
                   <Link to={ROUTES.REGISTER} className="login-footer-link">
                     Create account
+                  </Link>
+                </p>
+                <p className="login-footer-text">
+                  Educator or faculty member?{' '}
+                  <Link to={ROUTES.TEACHER_LOGIN} className="login-footer-link">
+                    Teacher Sign In
                   </Link>
                 </p>
               </footer>

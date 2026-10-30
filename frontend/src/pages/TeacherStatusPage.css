@@ -1,0 +1,150 @@
+/**
+ * AttendAI Teacher Status Page Styles
+ * Milestone 8.7: Teacher Registration and Approval Request
+ */
+
+.teacher-status-page {
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-16);
+  min-height: calc(100vh - 64px - 140px);
+  display: flex;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .teacher-status-page {
+    padding-top: var(--space-12);
+  }
+}
+
+.teacher-status-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6) var(--space-5);
+  box-shadow: var(--shadow-lg);
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (min-width: 480px) {
+  .teacher-status-card {
+    padding: var(--space-8) var(--space-8);
+  }
+}
+
+.teacher-status-icon-box {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+}
+
+.teacher-status-icon-box--pending {
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--color-feedback-warning);
+}
+
+.teacher-status-icon-box--approved {
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--color-feedback-success);
+}
+
+.teacher-status-icon-box--rejected {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--color-feedback-error);
+}
+
+.teacher-status-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-3);
+}
+
+.teacher-status-badge--pending {
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--color-feedback-warning);
+}
+
+.teacher-status-badge--approved {
+  background-color: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--color-feedback-success);
+}
+
+.teacher-status-badge--rejected {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--color-feedback-error);
+}
+
+.teacher-status-title {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.teacher-status-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-6);
+}
+
+/* Detail Box */
+.teacher-status-details {
+  background-color: var(--color-bg-base);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  text-align: left;
+}
+
+.teacher-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.teacher-status-row:last-child {
+  border-bottom: none;
+}
+
+.teacher-status-row-label {
+  color: var(--color-text-muted);
+}
+
+.teacher-status-row-value {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.teacher-status-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .teacher-status-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}

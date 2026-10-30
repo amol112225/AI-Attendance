@@ -185,3 +185,92 @@ BEGIN
     DELETE FROM auth.users WHERE id = test_user_id;
 END;
 $$;
+
+-- ------------------------------------------------------------------------------
+-- TEST 6: Teacher Registration Request Schema & Duplicate Prevention
+-- ------------------------------------------------------------------------------
+DO $$
+DECLARE
+    test_user_id UUID := gen_random_uuid();
+    req_id UUID;
+    dup_blocked BOOLEAN := FALSE;
+BEGIN
+    -- Insert test auth user
+    INSERT INTO auth.users (id, email, raw_user_meta_data)
+    VALUES (
+        test_user_id,
+        'applicant@attendai.edu',
+        jsonb_build_object('full_name', 'Faculty Applicant', 'requested_role', 'teacher')
+    );
+
+    -- Check if trigger automatically created pending teacher request
+    SELECT id INTO req_id
+    FROM public.teacher_registration_requests
+    WHERE user_id = test_user_id AND status = 'pending';
+
+    IF req_id IS NULL THEN
+        RAISE EXCEPTION 'TEST 6 FAILED: Teacher registration request was not created automatically';
+    END IF;
+
+    -- Attempt to insert a second pending request for the same user (must fail via unique index)
+    BEGIN
+        INSERT INTO public.teacher_registration_requests (user_id, status)
+        VALUES (test_user_id, 'pending');
+    EXCEPTION
+        WHEN OTHERS THEN
+            dup_blocked := TRUE;
+            RAISE NOTICE 'Duplicate pending request blocked: %', SQLERRM;
+    END;
+
+    IF NOT dup_blocked THEN
+        RAISE EXCEPTION 'TEST 6 FAILED: Duplicate pending request was allowed!';
+    END IF;
+
+    RAISE NOTICE 'TEST 6 PASSED: Teacher request created automatically and duplicate pending blocked!';
+
+    -- Cleanup
+    DELETE FROM auth.users WHERE id = test_user_id;
+END;
+$$;
+
+-- ------------------------------------------------------------------------------
+-- TEST 7: Teacher Request Tampering Prevention Simulation
+-- ------------------------------------------------------------------------------
+DO $$
+DECLARE
+    test_user_id UUID := gen_random_uuid();
+    req_id UUID;
+    tamper_blocked BOOLEAN := FALSE;
+BEGIN
+    INSERT INTO auth.users (id, email, raw_user_meta_data)
+    VALUES (
+        test_user_id,
+        'tamper_test@attendai.edu',
+        jsonb_build_object('full_name', 'Tamper Tester', 'requested_role', 'teacher')
+    );
+
+    -- Simulate authenticated web client session
+    PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+
+    -- Attempt to update status to 'approved' as authenticated client
+    BEGIN
+        UPDATE public.teacher_registration_requests
+        SET status = 'approved'
+        WHERE user_id = test_user_id;
+    EXCEPTION
+        WHEN OTHERS THEN
+            tamper_blocked := TRUE;
+            RAISE NOTICE 'Request status tamper attempt successfully blocked: %', SQLERRM;
+    END;
+
+    IF NOT tamper_blocked THEN
+        RAISE EXCEPTION 'TEST 7 FAILED: Client was able to update request status to approved!';
+    END IF;
+
+    RAISE NOTICE 'TEST 7 PASSED: Client modification of teacher requests strictly prevented!';
+
+    -- Cleanup
+    DELETE FROM auth.users WHERE id = test_user_id;
+END;
+$$;
+

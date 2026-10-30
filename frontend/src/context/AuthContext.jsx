@@ -10,7 +10,13 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getSession, onAuthStateChange, logoutUser, getUserProfile } from '../services/authService';
+import {
+  getSession,
+  onAuthStateChange,
+  logoutUser,
+  getUserProfile,
+  getTeacherRegistrationRequest,
+} from '../services/authService';
 import { AuthContext } from './authContextDef';
 
 export function AuthProvider({ children }) {
@@ -20,6 +26,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState(null);
+  const [teacherRequest, setTeacherRequest] = useState(null);
+  const [teacherRequestLoading, setTeacherRequestLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Helper to safely load profile for an authenticated user ID without throwing
@@ -55,6 +63,26 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Helper to safely load teacher registration request status without throwing
+  const loadTeacherRequest = useCallback(async (userId) => {
+    if (!userId) {
+      setTeacherRequest(null);
+      setTeacherRequestLoading(false);
+      return null;
+    }
+    setTeacherRequestLoading(true);
+    try {
+      const { request } = await getTeacherRegistrationRequest(userId);
+      setTeacherRequest(request || null);
+      return request || null;
+    } catch {
+      setTeacherRequest(null);
+      return null;
+    } finally {
+      setTeacherRequestLoading(false);
+    }
+  }, []);
+
   // Restore initial session on application mount
   useEffect(() => {
     let isMounted = true;
@@ -66,11 +94,15 @@ export function AuthProvider({ children }) {
           if (!error && initialSession?.user) {
             setSession(initialSession);
             setUser(initialSession.user);
-            await loadProfile(initialSession.user.id);
+            await Promise.all([
+              loadProfile(initialSession.user.id),
+              loadTeacherRequest(initialSession.user.id),
+            ]);
           } else {
             setSession(null);
             setUser(null);
             setProfile(null);
+            setTeacherRequest(null);
           }
         }
       } catch {
@@ -78,6 +110,7 @@ export function AuthProvider({ children }) {
           setSession(null);
           setUser(null);
           setProfile(null);
+          setTeacherRequest(null);
         }
       } finally {
         if (isMounted) {
@@ -95,11 +128,15 @@ export function AuthProvider({ children }) {
       if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
-        await loadProfile(currentSession.user.id);
+        await Promise.all([
+          loadProfile(currentSession.user.id),
+          loadTeacherRequest(currentSession.user.id),
+        ]);
       } else {
         setSession(null);
         setUser(null);
         setProfile(null);
+        setTeacherRequest(null);
       }
       setLoading(false);
     });
@@ -108,7 +145,7 @@ export function AuthProvider({ children }) {
       isMounted = false;
       unsubscribe();
     };
-  }, [loadProfile]);
+  }, [loadProfile, loadTeacherRequest]);
 
   // Update session directly (e.g., immediately after login or registration)
   const setAuthSession = useCallback(async (newSession) => {
@@ -116,12 +153,16 @@ export function AuthProvider({ children }) {
     const currentUser = newSession?.user ?? null;
     setUser(currentUser);
     if (currentUser?.id) {
-      await loadProfile(currentUser.id);
+      await Promise.all([
+        loadProfile(currentUser.id),
+        loadTeacherRequest(currentUser.id),
+      ]);
     } else {
       setProfile(null);
+      setTeacherRequest(null);
     }
     setLoading(false);
-  }, [loadProfile]);
+  }, [loadProfile, loadTeacherRequest]);
 
   // Manual trigger to refresh profile data (e.g. after administrative role changes)
   const refreshProfile = useCallback(async () => {
@@ -130,6 +171,14 @@ export function AuthProvider({ children }) {
     }
     return null;
   }, [user, loadProfile]);
+
+  // Manual trigger to refresh teacher request data
+  const refreshTeacherRequest = useCallback(async () => {
+    if (user?.id) {
+      return await loadTeacherRequest(user.id);
+    }
+    return null;
+  }, [user, loadTeacherRequest]);
 
   // Logout handler
   const logout = useCallback(async () => {
@@ -140,11 +189,13 @@ export function AuthProvider({ children }) {
       setSession(null);
       setUser(null);
       setProfile(null);
+      setTeacherRequest(null);
     } catch {
       // Clear local state even if network call fails
       setSession(null);
       setUser(null);
       setProfile(null);
+      setTeacherRequest(null);
     } finally {
       setIsLoggingOut(false);
     }
@@ -160,12 +211,28 @@ export function AuthProvider({ children }) {
       loading,
       profileLoading,
       profileError,
+      teacherRequest,
+      teacherRequestLoading,
       isAuthenticated: Boolean(session && user),
       logout,
       setAuthSession,
       refreshProfile,
+      refreshTeacherRequest,
     }),
-    [user, session, profile, loading, profileLoading, profileError, logout, setAuthSession, refreshProfile]
+    [
+      user,
+      session,
+      profile,
+      loading,
+      profileLoading,
+      profileError,
+      teacherRequest,
+      teacherRequestLoading,
+      logout,
+      setAuthSession,
+      refreshProfile,
+      refreshTeacherRequest,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

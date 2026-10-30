@@ -103,6 +103,18 @@ export function UnauthorizedPage() {
               Return to Homepage
             </Button>
 
+            {reason === 'pending_approval' ? (
+              <Button
+                variant="outline"
+                size="md"
+                type="button"
+                icon={<Clock size={16} />}
+                onClick={() => navigate(ROUTES.TEACHER_STATUS)}
+              >
+                View Request Details
+              </Button>
+            ) : null}
+
             {reason === 'pending_approval' || reason === 'error' ? (
               <Button
                 variant="outline"

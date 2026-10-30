@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Mail, CheckCircle2, ShieldCheck, ArrowRight, GraduationCap, BookOpen } from 'lucide-react';
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { ErrorMessage } from '../components/common/ErrorMessage';
@@ -204,6 +204,18 @@ export function RegisterPage() {
           {/* Registration Form (Default View) */}
           {successState === null && (
             <>
+              {/* Role Switcher Tabs */}
+              <div className="auth-role-tabs" role="tablist" aria-label="Account Type Selection">
+                <span className="auth-role-tab auth-role-tab--active" role="tab" aria-selected="true">
+                  <GraduationCap size={15} aria-hidden="true" />
+                  <span>Student Registration</span>
+                </span>
+                <Link to={ROUTES.TEACHER_REGISTER} className="auth-role-tab" role="tab" aria-selected="false">
+                  <BookOpen size={15} aria-hidden="true" />
+                  <span>Teacher Registration</span>
+                </Link>
+              </div>
+
               <header className="register-header">
                 <div className="register-badge">
                   <ShieldCheck size={13} aria-hidden="true" />
@@ -372,6 +384,12 @@ export function RegisterPage() {
                   Already have an account?{' '}
                   <Link to={ROUTES.LOGIN} className="register-footer-link">
                     Log in
+                  </Link>
+                </p>
+                <p className="register-footer-text">
+                  Are you an educator or faculty member?{' '}
+                  <Link to={ROUTES.TEACHER_REGISTER} className="register-footer-link">
+                    Register as a Teacher
                   </Link>
                 </p>
               </footer>

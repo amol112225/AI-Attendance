@@ -17,10 +17,10 @@ export const ROLES = {
  */
 export const ROUTE_ACCESS = {
   // Public Routes (Accessible to all users without authentication)
-  PUBLIC: ['/', '/login', '/register'],
+  PUBLIC: ['/', '/login', '/register', '/register/teacher', '/login/teacher'],
 
   // Authenticated Base (Any valid logged-in user)
-  AUTHENTICATED: ['/unauthorized'],
+  AUTHENTICATED: ['/unauthorized', '/teacher/status'],
 
   // Role-Specific Routes
   STUDENT_ONLY: {
