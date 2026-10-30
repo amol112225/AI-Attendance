@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ScanFace,
   Mic,
@@ -25,6 +25,7 @@ import { Button } from '../components/common/Button';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HowItWorksSection } from '../components/home/HowItWorksSection';
 import { CtaSection } from '../components/home/CtaSection';
+import { ROUTES } from '../routes/routes';
 import './HomePage.css';
 
 // Sample fictional rows demonstrating the multi-modal attendance verification interface
@@ -69,6 +70,7 @@ const DEMO_ATTENDANCE_ROWS = [
 
 export function HomePage() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Scroll to section when URL contains anchor hash (e.g., from direct entry or cross-route nav)
   useEffect(() => {
@@ -85,8 +87,7 @@ export function HomePage() {
 
   const handleGetStarted = (e) => {
     e.preventDefault();
-    // Milestone integration point: Authentication & Onboarding
-    // Kept safe and inert while authentication is under construction.
+    navigate(ROUTES.REGISTER);
   };
 
   const handleExploreFeatures = (e) => {

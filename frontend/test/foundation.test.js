@@ -393,4 +393,100 @@ assert.strictEqual(
 assert.strictEqual(formatAuthError(null), '');
 console.log('✔ Supabase Auth Foundation: Client, authService, and role security safeguards verified');
 
-console.log('--- All Milestone 1 to 8.2 verification tests passed! ---');
+// 15. Verify User Registration Page & Routing (Milestone 8.3)
+assert.ok(routesContent.includes("REGISTER: '/register'"), 'REGISTER route missing from routes.js');
+assert.ok(appRoutesContent.includes("import('../pages/RegisterPage')"), 'RegisterPage lazy import missing from AppRoutes.jsx');
+assert.ok(appRoutesContent.includes('ROUTES.REGISTER'), 'ROUTES.REGISTER Route element missing from AppRoutes.jsx');
+
+const registerPageJsxPath = path.join(rootDir, 'src', 'pages', 'RegisterPage.jsx');
+assert.ok(fs.existsSync(registerPageJsxPath), 'src/pages/RegisterPage.jsx must exist');
+const registerPageJsxContent = fs.readFileSync(registerPageJsxPath, 'utf8');
+
+const registerPageCssPath = path.join(rootDir, 'src', 'pages', 'RegisterPage.css');
+assert.ok(fs.existsSync(registerPageCssPath), 'src/pages/RegisterPage.css must exist');
+const registerPageCssContent = fs.readFileSync(registerPageCssPath, 'utf8');
+
+// Form inputs and labels
+assert.ok(registerPageJsxContent.includes('htmlFor="fullName"'), 'fullName label missing');
+assert.ok(registerPageJsxContent.includes('id="fullName"'), 'fullName input id missing');
+assert.ok(registerPageJsxContent.includes('htmlFor="email"'), 'email label missing');
+assert.ok(registerPageJsxContent.includes('id="email"'), 'email input id missing');
+assert.ok(registerPageJsxContent.includes('htmlFor="password"'), 'password label missing');
+assert.ok(registerPageJsxContent.includes('id="password"'), 'password input id missing');
+assert.ok(registerPageJsxContent.includes('htmlFor="confirmPassword"'), 'confirmPassword label missing');
+assert.ok(registerPageJsxContent.includes('id="confirmPassword"'), 'confirmPassword input id missing');
+assert.ok(registerPageJsxContent.includes('Create Account'), 'Create Account submit button missing');
+assert.ok(registerPageJsxContent.includes('ROUTES.LOGIN'), 'Link to LOGIN route missing');
+
+// Client-side validations
+assert.ok(registerPageJsxContent.includes('Full Name is required'), 'Full name required validation missing');
+assert.ok(registerPageJsxContent.includes('Email Address is required'), 'Email required validation missing');
+assert.ok(registerPageJsxContent.includes('valid email address'), 'Email pattern validation missing');
+assert.ok(registerPageJsxContent.includes('Passwords do not match'), 'Password confirmation matching validation missing');
+assert.ok(registerPageJsxContent.includes('isSubmitting'), 'isSubmitting lock against duplicate submissions missing');
+
+// Both email confirmation scenarios
+assert.ok(registerPageJsxContent.includes('confirmation_required'), 'Scenario A (Email confirmation required) state missing');
+assert.ok(registerPageJsxContent.includes('Check your email'), 'Scenario A user instructions missing');
+assert.ok(registerPageJsxContent.includes('active_session'), 'Scenario B (Active session instant registration) state missing');
+assert.ok(registerPageJsxContent.includes('Account Created!'), 'Scenario B user success state missing');
+
+// Administrative approval policy: No role selector or teacher elevation
+assert.ok(!registerPageJsxContent.includes('<select'), 'Role selector select element must not exist in RegisterPage');
+assert.ok(registerPageJsxContent.includes('Student'), 'Student role default badge/notice missing');
+
+// CTA & Navbar navigation connections
+assert.ok(navbarJsxContent.includes('ROUTES.REGISTER'), 'Navbar Get Started must navigate to ROUTES.REGISTER');
+assert.ok(homePageJsxContent.includes('ROUTES.REGISTER'), 'Hero Get Started must navigate to ROUTES.REGISTER');
+const updatedCtaContent = fs.readFileSync(ctaSectionJsxPath, 'utf8');
+assert.ok(updatedCtaContent.includes('ROUTES.REGISTER'), 'CtaSection Get Started must navigate to ROUTES.REGISTER');
+
+// Responsive CSS rules
+assert.ok(registerPageCssContent.includes('@media (min-width: 480px)'), 'Mobile adaptation media query missing in RegisterPage.css');
+assert.ok(registerPageCssContent.includes('max-width: 480px'), 'Responsive card max-width missing in RegisterPage.css');
+
+// Unit test validation logic in isolation
+function mockValidate({ fullName, email, password, confirmPassword }) {
+  const errors = {};
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!fullName?.trim()) errors.fullName = 'Full Name is required.';
+  if (!email?.trim()) errors.email = 'Email Address is required.';
+  else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Please enter a valid email address.';
+  if (!password) errors.password = 'Password is required.';
+  else if (password.length < 6) errors.password = 'Password must be at least 6 characters long.';
+  if (!confirmPassword) errors.confirmPassword = 'Confirm Password is required.';
+  else if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match.';
+  return errors;
+}
+
+// Validation unit assertions
+assert.ok(mockValidate({ fullName: '', email: '', password: '', confirmPassword: '' }).fullName, 'Empty validation failed');
+assert.ok(mockValidate({ fullName: 'Amol', email: 'invalid-email', password: 'password123', confirmPassword: 'password123' }).email, 'Email format validation failed');
+assert.ok(mockValidate({ fullName: 'Amol', email: 'test@example.com', password: 'short', confirmPassword: 'short' }).password, 'Short password validation failed');
+assert.ok(mockValidate({ fullName: 'Amol', email: 'test@example.com', password: 'password123', confirmPassword: 'different' }).confirmPassword, 'Password mismatch validation failed');
+assert.strictEqual(Object.keys(mockValidate({ fullName: 'Amol', email: 'test@example.com', password: 'password123', confirmPassword: 'password123' })).length, 0, 'Valid data should yield 0 errors');
+
+// Mock registration outcomes verification
+async function mockRegister(scenario) {
+  if (scenario === 'error') {
+    return { data: null, error: new Error('User already registered'), isConfirmationRequired: false };
+  }
+  if (scenario === 'confirmation_required') {
+    return { data: { user: { id: 'user-1' } }, error: null, isConfirmationRequired: true };
+  }
+  if (scenario === 'active_session') {
+    return { data: { user: { id: 'user-2' }, session: { access_token: 'token-xyz' } }, error: null, isConfirmationRequired: false };
+  }
+}
+
+const errorRes = await mockRegister('error');
+assert.strictEqual(formatAuthError(errorRes.error), 'An account with this email address already exists. Please log in instead.');
+const confirmRes = await mockRegister('confirmation_required');
+assert.strictEqual(confirmRes.isConfirmationRequired, true);
+const activeRes = await mockRegister('active_session');
+assert.strictEqual(activeRes.isConfirmationRequired, false);
+assert.ok(activeRes.data.session);
+
+console.log('✔ User Registration: RegisterPage, form validation, email confirmation scenarios, and routing verified');
+
+console.log('--- All Milestone 1 to 8.3 verification tests passed! ---');

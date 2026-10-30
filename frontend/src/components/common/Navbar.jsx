@@ -10,6 +10,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Cpu, Menu, X } from 'lucide-react';
 import { Container } from './Container';
 import { Button } from './Button';
+import { ROUTES } from '../../routes/routes';
 import './Navbar.css';
 
 const NAV_LINKS = [
@@ -120,8 +121,9 @@ export function Navbar({
     setIsMobileMenuOpen(false);
     if (onGetStartedClick) {
       onGetStartedClick(e);
+      return;
     }
-    // No-op placeholder: ready for Milestone 3 registration onboarding flow.
+    navigate(ROUTES.REGISTER);
   };
 
   return (

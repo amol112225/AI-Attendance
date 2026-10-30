@@ -6,16 +6,19 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Container } from '../common/Container';
 import { Button } from '../common/Button';
+import { ROUTES } from '../../routes/routes';
 import './CtaSection.css';
 
 export function CtaSection() {
+  const navigate = useNavigate();
+
   const handleGetStarted = (e) => {
     e.preventDefault();
-    // Milestone integration point: Authentication & Onboarding
-    // Safely kept inert until authentication and registration are implemented.
+    navigate(ROUTES.REGISTER);
   };
 
   return (
