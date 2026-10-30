@@ -156,7 +156,7 @@ export function TeacherLoginPage() {
                 ) : null}
               </p>
               <div className="login-authenticated-actions">
-                {isApproved || teacherRequest ? (
+                {(isApproved || teacherRequest) && (
                   <Button
                     variant="primary"
                     size="md"
@@ -165,18 +165,9 @@ export function TeacherLoginPage() {
                   >
                     View Teacher Status
                   </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    type="button"
-                    onClick={() => navigate(ROUTES.ROOT)}
-                  >
-                    Return to Homepage
-                  </Button>
                 )}
                 <Button
-                  variant="outline"
+                  variant={isApproved || teacherRequest ? 'outline' : 'primary'}
                   size="md"
                   type="button"
                   onClick={() => navigate(ROUTES.ROOT)}
