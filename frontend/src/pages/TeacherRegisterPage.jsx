@@ -2,11 +2,10 @@
  * AttendAI Teacher Registration Page Component
  * Milestone 8.7: Teacher Registration and Approval Request
  *
- * Implements dedicated, validated registration for educators and faculty:
- * - Collects full name, email, password, confirm password.
- * - Enforces security rule: User NEVER receives teacher role directly upon registration.
- * - Automatically registers account with 'student' profile and submits pending request.
- * - Handles both Email Confirmation Enabled and Disabled scenarios cleanly.
+ * Structurally identical to Student Registration (RegisterPage.jsx):
+ * - Reuses the exact same form layout, container, input dimensions, buttons, and styles.
+ * - Displays Teacher-specific content: Faculty Portal badge, institutional email, approval notice.
+ * - Submits teacher application via registerTeacher() without auto-assigning elevated privileges.
  */
 
 import React, { useState } from 'react';
@@ -150,30 +149,30 @@ export function TeacherRegisterPage() {
   };
 
   return (
-    <div className="teacher-register-page">
+    <div className="register-page">
       <Container size="sm">
-        <div className="teacher-register-card">
+        <div className="register-card">
           {/* Scenario A: Email Confirmation Sent Screen */}
           {successState === 'confirmation_required' && (
             <div
-              className="teacher-success-card"
+              className="register-success-card"
               role="region"
               aria-label="Teacher Registration Confirmation Notice"
             >
               <div
-                className="teacher-success-icon teacher-success-icon--confirmation"
+                className="register-success-icon register-success-icon--confirmation"
                 aria-hidden="true"
               >
                 <Mail size={28} />
               </div>
-              <h1 className="teacher-success-title">Verify your email</h1>
-              <p className="teacher-success-description">
+              <h1 className="register-success-title">Verify your email</h1>
+              <p className="register-success-description">
                 We sent a confirmation link to{' '}
-                <span className="teacher-success-highlight">{registeredEmail}</span>.
+                <span className="register-success-highlight">{registeredEmail}</span>.
                 Please check your inbox and verify your email. Once verified, log in to
                 track your Teacher approval request.
               </p>
-              <div className="teacher-success-actions">
+              <div className="register-success-actions">
                 <Button
                   variant="primary"
                   size="md"
@@ -197,24 +196,24 @@ export function TeacherRegisterPage() {
           {/* Scenario B: Active Session & Immediate Teacher Request Created */}
           {successState === 'active_session' && (
             <div
-              className="teacher-success-card"
+              className="register-success-card"
               role="region"
               aria-label="Teacher Application Submitted Notice"
             >
               <div
-                className="teacher-success-icon teacher-success-icon--active"
+                className="register-success-icon register-success-icon--active"
                 aria-hidden="true"
               >
                 <Clock size={28} />
               </div>
-              <h1 className="teacher-success-title">Application Submitted!</h1>
-              <p className="teacher-success-description">
+              <h1 className="register-success-title">Application Submitted!</h1>
+              <p className="register-success-description">
                 Your account has been registered and your request to become a Teacher
                 has been submitted for administrative review.
                 <br />
                 <strong>Current Status: Pending Approval</strong>
               </p>
-              <div className="teacher-success-actions">
+              <div className="register-success-actions">
                 <Button
                   variant="primary"
                   size="md"
@@ -250,13 +249,13 @@ export function TeacherRegisterPage() {
                 </span>
               </div>
 
-              <header className="teacher-register-header">
-                <div className="teacher-register-badge">
+              <header className="register-header">
+                <div className="register-badge register-badge--teacher">
                   <ShieldCheck size={13} aria-hidden="true" />
                   <span>FACULTY PORTAL</span>
                 </div>
-                <h1 className="teacher-register-title">Register as a Teacher</h1>
-                <p className="teacher-register-subtitle">
+                <h1 className="register-title">Register as a Teacher</h1>
+                <p className="register-subtitle">
                   Apply for teacher privileges to conduct AI-assisted attendance sessions.
                 </p>
               </header>
@@ -270,13 +269,13 @@ export function TeacherRegisterPage() {
                 </div>
               )}
 
-              <form className="teacher-register-form" onSubmit={handleSubmit} noValidate>
+              <form className="register-form" onSubmit={handleSubmit} noValidate>
                 {/* Full Name */}
-                <div className="teacher-register-field">
-                  <label htmlFor="teacher-fullName" className="teacher-register-label">
+                <div className="register-field">
+                  <label htmlFor="teacher-fullName" className="register-label">
                     Full Name
                   </label>
-                  <div className="teacher-register-input-wrapper">
+                  <div className="register-input-wrapper">
                     <input
                       id="teacher-fullName"
                       name="fullName"
@@ -287,24 +286,24 @@ export function TeacherRegisterPage() {
                       value={formData.fullName}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-register-input ${fieldErrors.fullName ? 'teacher-register-input--error' : ''}`}
+                      className={`register-input ${fieldErrors.fullName ? 'register-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.fullName)}
                       aria-describedby={fieldErrors.fullName ? 'teacher-fullName-error' : undefined}
                     />
                   </div>
                   {fieldErrors.fullName && (
-                    <span id="teacher-fullName-error" className="teacher-register-field-error" role="alert">
+                    <span id="teacher-fullName-error" className="register-field-error" role="alert">
                       {fieldErrors.fullName}
                     </span>
                   )}
                 </div>
 
                 {/* Email Address */}
-                <div className="teacher-register-field">
-                  <label htmlFor="teacher-email" className="teacher-register-label">
+                <div className="register-field">
+                  <label htmlFor="teacher-email" className="register-label">
                     Institutional Email Address
                   </label>
-                  <div className="teacher-register-input-wrapper">
+                  <div className="register-input-wrapper">
                     <input
                       id="teacher-email"
                       name="email"
@@ -315,24 +314,24 @@ export function TeacherRegisterPage() {
                       value={formData.email}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-register-input ${fieldErrors.email ? 'teacher-register-input--error' : ''}`}
+                      className={`register-input ${fieldErrors.email ? 'register-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.email)}
                       aria-describedby={fieldErrors.email ? 'teacher-email-error' : undefined}
                     />
                   </div>
                   {fieldErrors.email && (
-                    <span id="teacher-email-error" className="teacher-register-field-error" role="alert">
+                    <span id="teacher-email-error" className="register-field-error" role="alert">
                       {fieldErrors.email}
                     </span>
                   )}
                 </div>
 
                 {/* Password */}
-                <div className="teacher-register-field">
-                  <label htmlFor="teacher-password" className="teacher-register-label">
+                <div className="register-field">
+                  <label htmlFor="teacher-password" className="register-label">
                     Password
                   </label>
-                  <div className="teacher-register-input-wrapper">
+                  <div className="register-input-wrapper">
                     <input
                       id="teacher-password"
                       name="password"
@@ -343,28 +342,28 @@ export function TeacherRegisterPage() {
                       value={formData.password}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-register-input ${fieldErrors.password ? 'teacher-register-input--error' : ''}`}
+                      className={`register-input ${fieldErrors.password ? 'register-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.password)}
                       aria-describedby={fieldErrors.password ? 'teacher-password-error' : 'teacher-password-hint'}
                     />
                   </div>
                   {fieldErrors.password ? (
-                    <span id="teacher-password-error" className="teacher-register-field-error" role="alert">
+                    <span id="teacher-password-error" className="register-field-error" role="alert">
                       {fieldErrors.password}
                     </span>
                   ) : (
-                    <span id="teacher-password-hint" className="teacher-register-field-hint">
+                    <span id="teacher-password-hint" className="register-field-hint">
                       Must be at least 6 characters.
                     </span>
                   )}
                 </div>
 
                 {/* Confirm Password */}
-                <div className="teacher-register-field">
-                  <label htmlFor="teacher-confirmPassword" className="teacher-register-label">
+                <div className="register-field">
+                  <label htmlFor="teacher-confirmPassword" className="register-label">
                     Confirm Password
                   </label>
-                  <div className="teacher-register-input-wrapper">
+                  <div className="register-input-wrapper">
                     <input
                       id="teacher-confirmPassword"
                       name="confirmPassword"
@@ -375,22 +374,22 @@ export function TeacherRegisterPage() {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-register-input ${fieldErrors.confirmPassword ? 'teacher-register-input--error' : ''}`}
+                      className={`register-input ${fieldErrors.confirmPassword ? 'register-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.confirmPassword)}
                       aria-describedby={fieldErrors.confirmPassword ? 'teacher-confirmPassword-error' : undefined}
                     />
                   </div>
                   {fieldErrors.confirmPassword && (
-                    <span id="teacher-confirmPassword-error" className="teacher-register-field-error" role="alert">
+                    <span id="teacher-confirmPassword-error" className="register-field-error" role="alert">
                       {fieldErrors.confirmPassword}
                     </span>
                   )}
                 </div>
 
                 {/* Administrative Approval Policy Notice */}
-                <div className="teacher-register-policy-notice" role="note">
-                  <Clock size={18} aria-hidden="true" />
-                  <p className="teacher-register-policy-text">
+                <div className="register-policy-notice register-policy-notice--warning" role="note">
+                  <Clock size={16} aria-hidden="true" />
+                  <p className="register-policy-text">
                     <strong>Administrative Approval Required:</strong> In accordance with AttendAI
                     security policies, teacher roles cannot be self-assigned. Your submission will
                     register your account and queue an approval request for administrator verification.
@@ -398,7 +397,7 @@ export function TeacherRegisterPage() {
                 </div>
 
                 {/* Submit Action */}
-                <div className="teacher-register-actions">
+                <div className="register-actions">
                   <Button
                     variant="primary"
                     size="lg"
@@ -414,16 +413,16 @@ export function TeacherRegisterPage() {
               </form>
 
               {/* Login and Switcher Links */}
-              <footer className="teacher-register-footer">
-                <p className="teacher-register-footer-text">
+              <footer className="register-footer">
+                <p className="register-footer-text">
                   Already registered as a teacher?{' '}
-                  <Link to={ROUTES.TEACHER_LOGIN} className="teacher-register-footer-link">
+                  <Link to={ROUTES.TEACHER_LOGIN} className="register-footer-link">
                     Teacher Sign In
                   </Link>
                 </p>
-                <p className="teacher-register-footer-text">
+                <p className="register-footer-text">
                   Looking for student registration?{' '}
-                  <Link to={ROUTES.REGISTER} className="teacher-register-footer-link">
+                  <Link to={ROUTES.REGISTER} className="register-footer-link">
                     Student Registration
                   </Link>
                 </p>

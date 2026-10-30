@@ -1,6 +1,7 @@
 /**
  * AttendAI Teacher Login Page Component
  * Milestone 8.7: Teacher Registration and Approval Request
+ * UI Correction: Structural layout identical to Student Login (LoginPage.jsx)
  *
  * Implements dedicated sign-in for faculty and educators.
  * Reuses central loginUser() service and AuthContext state.
@@ -108,26 +109,26 @@ export function TeacherLoginPage() {
   };
 
   return (
-    <div className="teacher-login-page">
+    <div className="login-page">
       <Container size="sm">
-        <div className="teacher-login-card">
+        <div className="login-card">
           {isAuthenticated ? (
             <div
-              className="teacher-login-authenticated"
+              className="login-authenticated-banner"
               role="region"
               aria-label="Already Signed In Notice"
             >
-              <div className="teacher-login-auth-icon" aria-hidden="true">
+              <div className="login-authenticated-icon" aria-hidden="true">
                 <CheckCircle2 size={26} />
               </div>
-              <h1 className="teacher-login-auth-title">You are signed in</h1>
-              <p className="teacher-login-auth-desc">
+              <h1 className="login-authenticated-title">You are signed in</h1>
+              <p className="login-authenticated-desc">
                 Signed in as <strong>{user?.email}</strong>
                 <br />
                 Role: <strong>{role || 'Student'}</strong> (
                 {isApproved ? 'Approved Teacher' : 'Pending Approval'})
               </p>
-              <div className="teacher-login-auth-actions">
+              <div className="login-authenticated-actions">
                 <Button
                   variant="primary"
                   size="md"
@@ -156,13 +157,13 @@ export function TeacherLoginPage() {
             </div>
           ) : (
             <>
-              <header className="teacher-login-header">
-                <div className="teacher-login-badge">
+              <header className="login-header">
+                <div className="login-badge login-badge--teacher">
                   <BookOpen size={13} aria-hidden="true" />
                   <span>FACULTY PORTAL</span>
                 </div>
-                <h1 className="teacher-login-title">Teacher Sign In</h1>
-                <p className="teacher-login-subtitle">
+                <h1 className="login-title">Teacher Sign In</h1>
+                <p className="login-subtitle">
                   Sign in to your AttendAI faculty account.
                 </p>
               </header>
@@ -176,13 +177,13 @@ export function TeacherLoginPage() {
                 </div>
               )}
 
-              <form className="teacher-login-form" onSubmit={handleSubmit} noValidate>
+              <form className="login-form" onSubmit={handleSubmit} noValidate>
                 {/* Email Address */}
-                <div className="teacher-login-field">
-                  <label htmlFor="teacher-login-email" className="teacher-login-label">
+                <div className="login-field">
+                  <label htmlFor="teacher-login-email" className="login-label">
                     Institutional Email Address
                   </label>
-                  <div className="teacher-login-input-wrapper">
+                  <div className="login-input-wrapper">
                     <input
                       id="teacher-login-email"
                       name="email"
@@ -193,7 +194,7 @@ export function TeacherLoginPage() {
                       value={formData.email}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-login-input ${fieldErrors.email ? 'teacher-login-input--error' : ''}`}
+                      className={`login-input ${fieldErrors.email ? 'login-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.email)}
                       aria-describedby={fieldErrors.email ? 'teacher-login-email-error' : undefined}
                     />
@@ -201,7 +202,7 @@ export function TeacherLoginPage() {
                   {fieldErrors.email && (
                     <span
                       id="teacher-login-email-error"
-                      className="teacher-login-field-error"
+                      className="login-field-error"
                       role="alert"
                     >
                       {fieldErrors.email}
@@ -210,11 +211,11 @@ export function TeacherLoginPage() {
                 </div>
 
                 {/* Password */}
-                <div className="teacher-login-field">
-                  <label htmlFor="teacher-login-password" className="teacher-login-label">
+                <div className="login-field">
+                  <label htmlFor="teacher-login-password" className="login-label">
                     Password
                   </label>
-                  <div className="teacher-login-input-wrapper">
+                  <div className="login-input-wrapper">
                     <input
                       id="teacher-login-password"
                       name="password"
@@ -225,7 +226,7 @@ export function TeacherLoginPage() {
                       value={formData.password}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      className={`teacher-login-input ${fieldErrors.password ? 'teacher-login-input--error' : ''}`}
+                      className={`login-input ${fieldErrors.password ? 'login-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.password)}
                       aria-describedby={fieldErrors.password ? 'teacher-login-password-error' : undefined}
                     />
@@ -233,7 +234,7 @@ export function TeacherLoginPage() {
                   {fieldErrors.password && (
                     <span
                       id="teacher-login-password-error"
-                      className="teacher-login-field-error"
+                      className="login-field-error"
                       role="alert"
                     >
                       {fieldErrors.password}
@@ -241,7 +242,7 @@ export function TeacherLoginPage() {
                   )}
                 </div>
 
-                <div className="teacher-login-actions">
+                <div className="login-actions">
                   <Button
                     variant="primary"
                     size="lg"
@@ -256,16 +257,16 @@ export function TeacherLoginPage() {
                 </div>
               </form>
 
-              <footer className="teacher-login-footer">
-                <p className="teacher-login-footer-text">
+              <footer className="login-footer">
+                <p className="login-footer-text">
                   New faculty member?{' '}
-                  <Link to={ROUTES.TEACHER_REGISTER} className="teacher-login-footer-link">
+                  <Link to={ROUTES.TEACHER_REGISTER} className="login-footer-link">
                     Apply for Teacher Access
                   </Link>
                 </p>
-                <p className="teacher-login-footer-text">
+                <p className="login-footer-text">
                   Student account?{' '}
-                  <Link to={ROUTES.LOGIN} className="teacher-login-footer-link">
+                  <Link to={ROUTES.LOGIN} className="login-footer-link">
                     Student Sign In
                   </Link>
                 </p>
