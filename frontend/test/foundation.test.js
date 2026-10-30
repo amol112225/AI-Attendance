@@ -2483,4 +2483,140 @@ const m91_adminDashContent = fs.readFileSync(m91_adminDashPath, 'utf8');
 assert.ok(m91_adminDashContent.includes('EmptyState'), 'EmptyState placeholder missing in AdminDashboard');
 
 console.log('✔ Milestone 9.1: All 26 Dashboard Architecture & Layout tests passed successfully');
-console.log('--- All Milestone 1 to 9.1 Verification Tests Passed! ---');
+
+// ==============================================================================
+// 26. Milestone 9.2: Student Dashboard & Academic Overview
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.2: Student Dashboard) ---');
+
+// 26.1 Component & Service File Existence
+const m92_studentServicePath = path.join(srcDir, 'services', 'studentService.js');
+assert.ok(fs.existsSync(m92_studentServicePath), 'studentService.js must exist');
+const m92_studentServiceContent = fs.readFileSync(m92_studentServicePath, 'utf8');
+assert.ok(m92_studentServiceContent.includes('calculateAttendancePercentage'), 'calculateAttendancePercentage export missing');
+assert.ok(m92_studentServiceContent.includes('getStudentAttendance'), 'getStudentAttendance export missing');
+assert.ok(m92_studentServiceContent.includes('getStudentSubjects'), 'getStudentSubjects export missing');
+
+const m92_studentDashPath = path.join(srcDir, 'pages', 'dashboards', 'StudentDashboard.jsx');
+assert.ok(fs.existsSync(m92_studentDashPath), 'StudentDashboard.jsx must exist');
+const m92_studentDashContent = fs.readFileSync(m92_studentDashPath, 'utf8');
+
+// 26.2 Shared Layout Integration
+assert.ok(m92_studentDashContent.includes('DashboardLayout'), 'StudentDashboard must use shared DashboardLayout');
+assert.ok(m92_studentDashContent.includes('DashboardPageHeader'), 'StudentDashboard must use shared DashboardPageHeader');
+assert.ok(m92_studentDashContent.includes("breadcrumb=\"Student Portal\""), 'Breadcrumb must indicate Student Portal');
+assert.ok(m92_studentDashContent.includes('Student Access'), 'Role badge must indicate Student Access');
+
+// 26.3 Personalized Welcome & Non-Hardcoded Profile Info
+assert.ok(m92_studentDashContent.includes('displayName'), 'Personalized welcome must use dynamic displayName');
+assert.ok(m92_studentDashContent.includes('profile?.full_name'), 'StudentDashboard must read from profile.full_name');
+assert.ok(m92_studentDashContent.includes('user?.email'), 'StudentDashboard must display dynamic user.email');
+assert.ok(m92_studentDashContent.includes('Welcome back,'), 'Welcome heading must greet the authenticated student');
+
+// 26.4 Safe Attendance Percentage Formula (Attended / Total * 100)
+const { calculateAttendancePercentage, getStudentAttendance, getStudentSubjects } = await import('../src/services/studentService.js');
+
+// Test zero total records (handles division by zero)
+assert.strictEqual(calculateAttendancePercentage(0, 0), 0, '0 total classes should yield 0% without error');
+assert.strictEqual(calculateAttendancePercentage(5, 0), 0, 'Zero total divisor should yield 0%');
+assert.strictEqual(calculateAttendancePercentage(0, 10), 0, '0 attended out of 10 should yield 0%');
+assert.strictEqual(calculateAttendancePercentage(8, 10), 80, '8 attended out of 10 should yield 80%');
+assert.strictEqual(calculateAttendancePercentage(10, 10), 100, '10 attended out of 10 should yield 100%');
+assert.strictEqual(calculateAttendancePercentage(7, 9), 78, '7 attended out of 9 should round to 78%');
+assert.strictEqual(calculateAttendancePercentage(-1, 10), 0, 'Negative attendance should yield 0%');
+assert.strictEqual(calculateAttendancePercentage(null, 10), 0, 'Null attendance should yield 0%');
+
+// 26.5 Graceful Handling of Missing Backend Tables
+const m92_mockAttendanceRes = await getStudentAttendance(null);
+assert.strictEqual(m92_mockAttendanceRes.total, 0, 'Missing studentId returns 0 total classes');
+assert.strictEqual(m92_mockAttendanceRes.attended, 0, 'Missing studentId returns 0 attended classes');
+assert.strictEqual(m92_mockAttendanceRes.rate, 0, 'Missing studentId returns 0% rate');
+assert.strictEqual(m92_mockAttendanceRes.records.length, 0, 'Missing studentId returns empty records array');
+assert.strictEqual(m92_mockAttendanceRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+const m92_mockSubjectsRes = await getStudentSubjects(null);
+assert.strictEqual(m92_mockSubjectsRes.subjects.length, 0, 'Missing studentId returns empty subjects array');
+assert.strictEqual(m92_mockSubjectsRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+// 26.6 Attendance Overview Empty State & No Fabricated Statistics
+assert.ok(m92_studentDashContent.includes('Attendance Overview'), 'Attendance Overview section heading missing');
+assert.ok(m92_studentDashContent.includes('Attendance Tracking Inactive'), 'Empty state title for inactive attendance tracking missing');
+assert.ok(m92_studentDashContent.includes('No attendance sessions have been logged for your account yet'), 'Explanatory description for absent records missing');
+
+// 26.7 Recent Attendance Activity Section & Empty State
+assert.ok(m92_studentDashContent.includes('Recent Attendance Activity'), 'Recent Attendance Activity heading missing');
+assert.ok(m92_studentDashContent.includes('No Recent Activity'), 'Empty state for recent activity missing');
+
+// 26.8 My Subjects Section & Empty State
+assert.ok(m92_studentDashContent.includes('My Subjects'), 'My Subjects heading missing');
+assert.ok(m92_studentDashContent.includes('No Enrolled Subjects Found'), 'Empty state for enrolled subjects missing');
+
+// 26.9 Quick Actions Navigation Links
+assert.ok(m92_studentDashContent.includes('Quick Actions'), 'Quick Actions heading missing');
+assert.ok(m92_studentDashContent.includes('ROUTES.STUDENT_ATTENDANCE'), 'Quick action link to STUDENT_ATTENDANCE missing');
+assert.ok(m92_studentDashContent.includes('ROUTES.STUDENT_SUBJECTS'), 'Quick action link to STUDENT_SUBJECTS missing');
+assert.ok(m92_studentDashContent.includes('ROUTES.STUDENT_PROFILE'), 'Quick action link to STUDENT_PROFILE missing');
+
+// 26.10 Profile Integration & Safe Error Handling
+assert.ok(m92_studentDashContent.includes('Student Profile'), 'Student Profile card heading missing');
+assert.ok(m92_studentDashContent.includes('profileLoading'), 'profileLoading state check missing');
+assert.ok(m92_studentDashContent.includes('profileError'), 'profileError state check missing');
+assert.ok(m92_studentDashContent.includes('formatAuthError'), 'formatAuthError sanitization missing in StudentDashboard');
+assert.ok(m92_studentDashContent.includes('Verified Student'), 'Verified Student indicator missing');
+
+// 26.11 Role-Based Route Protection Verification
+const m92_appRoutesContent = fs.readFileSync(appRoutesPath, 'utf8');
+assert.ok(
+  m92_appRoutesContent.includes("path={ROUTES.STUDENT_DASHBOARD}"),
+  'ROUTES.STUDENT_DASHBOARD route registration missing'
+);
+assert.ok(
+  m92_appRoutesContent.includes("allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]}"),
+  'STUDENT_DASHBOARD must restrict access to student and admin roles'
+);
+
+// RBAC evaluation matrix verification
+const m92_studentAccess = evaluateAccess({
+  allowedRoles: ['student', 'admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m92_studentAccess.allowed, true, 'Student must have access to Student Dashboard');
+
+const m92_teacherAccess = evaluateAccess({
+  allowedRoles: ['student', 'admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m92_teacherAccess.allowed, false, 'Teacher role must NOT have access to Student Dashboard');
+assert.strictEqual(m92_teacherAccess.reason, 'forbidden', 'Teacher denied with forbidden status');
+
+const m92_unauthAccess = evaluateAccess({
+  allowedRoles: ['student', 'admin'],
+  requireApproval: false,
+  isAuthenticated: false,
+  profile: null,
+  role: null,
+  isApproved: false,
+});
+assert.strictEqual(m92_unauthAccess.allowed, false, 'Unauthenticated user denied access to Student Dashboard');
+assert.strictEqual(m92_unauthAccess.reason, 'not_authenticated', 'Unauthenticated user denied with not_authenticated');
+
+// 26.12 Design System Classes in dashboard.css
+const m92_dashboardCssPath = path.join(srcDir, 'styles', 'dashboard.css');
+const m92_dashboardCssContent = fs.readFileSync(m92_dashboardCssPath, 'utf8');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-stats-grid'), '.dashboard-stats-grid class missing in dashboard.css');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-stat-card'), '.dashboard-stat-card class missing in dashboard.css');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-actions-grid'), '.dashboard-actions-grid class missing in dashboard.css');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-action-card'), '.dashboard-action-card class missing in dashboard.css');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-profile-list'), '.dashboard-profile-list class missing in dashboard.css');
+assert.ok(m92_dashboardCssContent.includes('.dashboard-activity-list'), '.dashboard-activity-list class missing in dashboard.css');
+
+console.log('✔ Milestone 9.2: All 28 Student Dashboard & Academic Overview tests passed successfully');
+console.log('--- All Milestone 1 to 9.2 Verification Tests Passed! ---');
