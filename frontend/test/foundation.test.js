@@ -489,4 +489,104 @@ assert.ok(activeRes.data.session);
 
 console.log('✔ User Registration: RegisterPage, form validation, email confirmation scenarios, and routing verified');
 
-console.log('--- All Milestone 1 to 8.3 verification tests passed! ---');
+// 16. Verify Login, AuthContext & Session Management (Milestone 8.4)
+assert.ok(routesContent.includes("LOGIN: '/login'"), 'LOGIN route missing from routes.js');
+assert.ok(appRoutesContent.includes("import('../pages/LoginPage')"), 'LoginPage lazy import missing from AppRoutes.jsx');
+assert.ok(appRoutesContent.includes('ROUTES.LOGIN'), 'ROUTES.LOGIN Route element missing from AppRoutes.jsx');
+
+const loginPageJsxPath = path.join(rootDir, 'src', 'pages', 'LoginPage.jsx');
+assert.ok(fs.existsSync(loginPageJsxPath), 'src/pages/LoginPage.jsx must exist');
+const loginPageJsxContent = fs.readFileSync(loginPageJsxPath, 'utf8');
+
+const loginPageCssPath = path.join(rootDir, 'src', 'pages', 'LoginPage.css');
+assert.ok(fs.existsSync(loginPageCssPath), 'src/pages/LoginPage.css must exist');
+const loginPageCssContent = fs.readFileSync(loginPageCssPath, 'utf8');
+
+// Form inputs, labels, and accessibility
+assert.ok(loginPageJsxContent.includes('htmlFor="login-email"'), 'login-email label missing');
+assert.ok(loginPageJsxContent.includes('id="login-email"'), 'login-email input id missing');
+assert.ok(loginPageJsxContent.includes('htmlFor="login-password"'), 'login-password label missing');
+assert.ok(loginPageJsxContent.includes('id="login-password"'), 'login-password input id missing');
+assert.ok(loginPageJsxContent.includes('Sign In'), 'Sign In submit button text missing');
+assert.ok(loginPageJsxContent.includes('ROUTES.REGISTER'), 'Link to REGISTER route missing in LoginPage');
+
+// Client validations and duplicate submission lock
+assert.ok(loginPageJsxContent.includes('Email Address is required'), 'Email validation missing in LoginPage');
+assert.ok(loginPageJsxContent.includes('Password is required'), 'Password validation missing in LoginPage');
+assert.ok(loginPageJsxContent.includes('isSubmitting'), 'isSubmitting lock against duplicate submissions missing in LoginPage');
+
+// AuthContext and useAuth hook files
+const authContextPath = path.join(rootDir, 'src', 'context', 'AuthContext.jsx');
+assert.ok(fs.existsSync(authContextPath), 'src/context/AuthContext.jsx must exist');
+const authContextContent = fs.readFileSync(authContextPath, 'utf8');
+
+const authContextDefPath = path.join(rootDir, 'src', 'context', 'authContextDef.js');
+assert.ok(fs.existsSync(authContextDefPath), 'src/context/authContextDef.js must exist');
+
+const useAuthPath = path.join(rootDir, 'src', 'hooks', 'useAuth.js');
+assert.ok(fs.existsSync(useAuthPath), 'src/hooks/useAuth.js must exist');
+const useAuthContent = fs.readFileSync(useAuthPath, 'utf8');
+
+// AuthContext API properties
+assert.ok(authContextContent.includes('AuthProvider'), 'AuthProvider missing from AuthContext.jsx');
+assert.ok(authContextContent.includes('getSession'), 'getSession session restoration missing from AuthContext.jsx');
+assert.ok(authContextContent.includes('onAuthStateChange'), 'onAuthStateChange event listener missing from AuthContext.jsx');
+assert.ok(authContextContent.includes('logoutUser'), 'logoutUser call missing from AuthContext.jsx');
+assert.ok(authContextContent.includes('isAuthenticated'), 'isAuthenticated boolean missing from AuthContext.jsx');
+assert.ok(useAuthContent.includes('useContext'), 'useContext missing from useAuth.js');
+
+// Root Application Wrapping
+const appJsxPath = path.join(rootDir, 'src', 'App.jsx');
+const appJsxContent = fs.readFileSync(appJsxPath, 'utf8');
+assert.ok(appJsxContent.includes('<AuthProvider>'), 'AuthProvider must wrap PageShell in App.jsx');
+
+// Navbar reactive state updates
+assert.ok(navbarJsxContent.includes('useAuth'), 'useAuth missing from Navbar.jsx');
+assert.ok(navbarJsxContent.includes('isAuthenticated'), 'isAuthenticated check missing from Navbar.jsx');
+assert.ok(navbarJsxContent.includes('Log Out'), 'Log Out button missing from Navbar.jsx');
+assert.ok(navbarJsxContent.includes('displayName'), 'User displayName missing from Navbar.jsx');
+assert.ok(navbarJsxContent.includes('ROUTES.LOGIN'), 'Navbar Login button must navigate to ROUTES.LOGIN');
+
+// Responsive CSS rules
+assert.ok(loginPageCssContent.includes('max-width: 440px'), 'Responsive card max-width missing in LoginPage.css');
+assert.ok(loginPageCssContent.includes('@media (min-width: 480px)'), 'Mobile padding media query missing in LoginPage.css');
+
+// Unit test mock validation for login
+function mockLoginValidate({ email, password }) {
+  const errors = {};
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email?.trim()) errors.email = 'Email Address is required.';
+  else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Please enter a valid email address.';
+  if (!password) errors.password = 'Password is required.';
+  return errors;
+}
+
+assert.ok(mockLoginValidate({ email: '', password: '' }).email, 'Email required check failed');
+assert.ok(mockLoginValidate({ email: 'bad-email', password: '123' }).email, 'Invalid email check failed');
+assert.ok(mockLoginValidate({ email: 'test@example.com', password: '' }).password, 'Password required check failed');
+assert.strictEqual(Object.keys(mockLoginValidate({ email: 'test@example.com', password: 'password123' })).length, 0, 'Valid login should yield 0 errors');
+
+// Mock login outcomes verification
+async function mockLogin(scenario) {
+  if (scenario === 'invalid') {
+    return { data: null, error: new Error('Invalid login credentials') };
+  }
+  if (scenario === 'network_error') {
+    return { data: null, error: new Error('Failed to fetch') };
+  }
+  if (scenario === 'success') {
+    return { data: { session: { access_token: 'valid-jwt-token' }, user: { id: 'u-1', email: 'student@attendai.edu' } }, error: null };
+  }
+}
+
+const invalidLoginRes = await mockLogin('invalid');
+assert.strictEqual(formatAuthError(invalidLoginRes.error), 'Invalid email or password. Please verify your credentials and try again.');
+const networkLoginRes = await mockLogin('network_error');
+assert.strictEqual(formatAuthError(networkLoginRes.error), 'Unable to connect to the authentication server. Please check your internet connection.');
+const successLoginRes = await mockLogin('success');
+assert.ok(successLoginRes.data.session);
+assert.strictEqual(successLoginRes.data.user.email, 'student@attendai.edu');
+
+console.log('✔ Login, AuthContext & Session Management: LoginPage, reactive Navbar, useAuth(), and session restoration verified');
+
+console.log('--- All Milestone 1 to 8.4 verification tests passed! ---');

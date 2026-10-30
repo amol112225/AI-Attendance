@@ -5,15 +5,18 @@
 
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { PageShell } from './layouts/PageShell';
 import { AppRoutes } from './routes/AppRoutes';
 
 export function App() {
   return (
     <BrowserRouter>
-      <PageShell>
-        <AppRoutes />
-      </PageShell>
+      <AuthProvider>
+        <PageShell>
+          <AppRoutes />
+        </PageShell>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -209,3 +209,69 @@
   width: 100%;
 }
 
+/* User Identity Badges (Authenticated State) */
+.navbar__user-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.navbar__user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--color-bg-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.navbar__user-badge svg {
+  color: var(--color-brand-cyan);
+}
+
+.navbar__user-name {
+  color: var(--color-text-primary);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar__mobile-user-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.navbar__mobile-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.navbar__mobile-user-info svg {
+  color: var(--color-brand-cyan);
+  margin-bottom: var(--space-1);
+}
+
+.navbar__mobile-user-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.navbar__mobile-user-email {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+

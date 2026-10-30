@@ -14,6 +14,7 @@ import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { registerUser, formatAuthError } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes/routes';
 import './RegisterPage.css';
 
@@ -23,6 +24,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const { setAuthSession } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -128,9 +130,13 @@ export function RegisterPage() {
       if (isConfirmationRequired) {
         // Scenario A: Email confirmation required
         setSuccessState('confirmation_required');
-      } else if (data?.user) {
+      } else if (data?.session) {
         // Scenario B: Active session / immediate creation
+        setAuthSession(data.session);
         setSuccessState('active_session');
+      } else if (data?.user) {
+        // Fallback user with no session (Scenario A)
+        setSuccessState('confirmation_required');
       } else {
         // Fallback safe state
         setSuccessState('confirmation_required');
@@ -378,3 +384,4 @@ export function RegisterPage() {
 }
 
 export default RegisterPage;
+

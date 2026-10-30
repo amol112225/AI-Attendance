@@ -7,9 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Cpu, Menu, X } from 'lucide-react';
+import { Cpu, Menu, X, LogOut, User } from 'lucide-react';
 import { Container } from './Container';
 import { Button } from './Button';
+import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../routes/routes';
 import './Navbar.css';
 
@@ -28,6 +29,7 @@ export function Navbar({
   const [prevPathname, setPrevPathname] = useState('/');
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
 
   // Reset mobile menu if pathname changes during navigation
   if (location.pathname !== prevPathname) {
@@ -113,8 +115,9 @@ export function Navbar({
     setIsMobileMenuOpen(false);
     if (onLoginClick) {
       onLoginClick(e);
+      return;
     }
-    // No-op placeholder: ready for Milestone 3 Supabase authentication flow.
+    navigate(ROUTES.LOGIN);
   };
 
   const handleGetStarted = (e) => {
@@ -125,6 +128,17 @@ export function Navbar({
     }
     navigate(ROUTES.REGISTER);
   };
+
+  const handleLogout = async () => {
+    setIsMobileMenuOpen(false);
+    await logout();
+    navigate(ROUTES.ROOT);
+  };
+
+  // Derive readable user display identifier (full_name fallback to email prefix or email)
+  const displayName =
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : 'User');
 
   return (
     <header className="navbar">
@@ -172,22 +186,43 @@ export function Navbar({
 
           {/* Desktop Action Buttons */}
           <div className="navbar__actions">
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              onClick={handleLogin}
-            >
-              Log In
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              type="button"
-              onClick={handleGetStarted}
-            >
-              Get Started
-            </Button>
+            {isAuthenticated ? (
+              <div className="navbar__user-actions">
+                <div className="navbar__user-badge" title={user?.email || 'Authenticated User'}>
+                  <User size={14} aria-hidden="true" />
+                  <span className="navbar__user-name">{displayName}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={handleLogout}
+                  icon={<LogOut size={14} />}
+                  iconPosition="right"
+                >
+                  Log Out
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={handleLogin}
+                >
+                  Log In
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="button"
+                  onClick={handleGetStarted}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle Button */}
@@ -242,22 +277,44 @@ export function Navbar({
             </ul>
 
             <div className="navbar__mobile-actions">
-              <Button
-                variant="outline"
-                size="md"
-                type="button"
-                onClick={handleLogin}
-              >
-                Log In
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                type="button"
-                onClick={handleGetStarted}
-              >
-                Get Started
-              </Button>
+              {isAuthenticated ? (
+                <div className="navbar__mobile-user-section">
+                  <div className="navbar__mobile-user-info">
+                    <User size={16} aria-hidden="true" />
+                    <span className="navbar__mobile-user-name">{displayName}</span>
+                    <span className="navbar__mobile-user-email">{user?.email}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    type="button"
+                    onClick={handleLogout}
+                    icon={<LogOut size={16} />}
+                    iconPosition="right"
+                  >
+                    Log Out
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    type="button"
+                    onClick={handleLogin}
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    type="button"
+                    onClick={handleGetStarted}
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { ROUTES } from './routes';
 // Code-split pages using React.lazy to maintain minimal initial bundle size
 const HomePage = lazy(() => import('../pages/HomePage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage'));
+const LoginPage = lazy(() => import('../pages/LoginPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 export function AppRoutes() {
@@ -28,6 +29,9 @@ export function AppRoutes() {
 
         {/* Milestone 8.3: AttendAI User Registration */}
         <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+
+        {/* Milestone 8.4: AttendAI User Login */}
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
 
         {/* Catch-All 404 Page */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />

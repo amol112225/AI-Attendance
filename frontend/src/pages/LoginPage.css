@@ -1,0 +1,216 @@
+/**
+ * AttendAI Login Page Styles
+ * Milestone 8.4: AttendAI Login, AuthContext & Session Management
+ */
+
+.login-page {
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-16);
+  min-height: calc(100vh - 64px - 140px);
+  display: flex;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .login-page {
+    padding-top: var(--space-12);
+  }
+}
+
+.login-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6) var(--space-5);
+  box-shadow: var(--shadow-lg);
+  max-width: 440px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 480px) {
+  .login-card {
+    padding: var(--space-8) var(--space-8);
+  }
+}
+
+/* Header */
+.login-header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand-violet);
+  background-color: var(--color-brand-violet-subtle);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-3);
+}
+
+.login-title {
+  font-size: var(--font-size-2xl);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.login-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+/* Form Styles */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.login-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--space-4);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-input:hover {
+  border-color: var(--color-border-hover);
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px var(--color-brand-violet-subtle);
+}
+
+.login-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.login-input--error {
+  border-color: var(--color-danger);
+}
+
+.login-input--error:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+.login-field-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+  line-height: var(--line-height-tight);
+  margin-top: 2px;
+}
+
+/* Actions */
+.login-actions {
+  margin-top: var(--space-2);
+}
+
+.login-actions .btn {
+  width: 100%;
+}
+
+/* Footer Link */
+.login-footer {
+  text-align: center;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.login-footer-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.login-footer-link {
+  color: var(--color-brand-cyan);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.login-footer-link:hover {
+  color: var(--color-brand-violet);
+  text-decoration: underline;
+}
+
+/* Logged In Info Banner (if authenticated user revisits /login) */
+.login-authenticated-banner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.login-authenticated-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.login-authenticated-title {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.login-authenticated-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.login-authenticated-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
