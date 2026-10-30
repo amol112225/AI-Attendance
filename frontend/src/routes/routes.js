@@ -5,11 +5,12 @@
 
 export const ROUTES = {
   ROOT: '/',
-  // Milestone 8.3 (Registration):
+  // Milestone 8.3 & 8.4 (Auth):
   REGISTER: '/register',
-  // Future Milestone 8.4 (Login):
   LOGIN: '/login',
-  // Future Milestone 8.6 (Dashboards):
+  // Milestone 8.6 (Access Control & RBAC):
+  UNAUTHORIZED: '/unauthorized',
+  // Future Dashboards:
   // STUDENT_DASHBOARD: '/student',
   // TEACHER_DASHBOARD: '/teacher',
   // Future Milestone 9 (AI Attendance Features):

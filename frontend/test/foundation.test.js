@@ -692,4 +692,147 @@ assert.ok(securityTestSql.includes('TEST 4: Automatic Profile Creation Simulatio
 assert.ok(securityTestSql.includes('TEST 5: Role Escalation Prevention Simulation'), 'Escalation prevention test missing in security_verification.sql');
 console.log('✔ Security Audit: Non-recursive RLS policy, administrative boundary, and verification tests verified');
 
-console.log('--- All Milestone 1 to 8.5 Security Audit verification tests passed! ---');
+// 19. Milestone 8.6: Protected Routes & Role-Based Access Control
+const srcDir = path.join(rootDir, 'src');
+const accessRulesPath = path.join(srcDir, 'routes', 'accessRules.js');
+assert.ok(fs.existsSync(accessRulesPath), 'accessRules.js must exist');
+const accessRulesContent = fs.readFileSync(accessRulesPath, 'utf8');
+
+const protectedRoutePath = path.join(srcDir, 'routes', 'ProtectedRoute.jsx');
+assert.ok(fs.existsSync(protectedRoutePath), 'ProtectedRoute.jsx must exist');
+const protectedRouteContent = fs.readFileSync(protectedRoutePath, 'utf8');
+
+const roleBasedRoutePath = path.join(srcDir, 'routes', 'RoleBasedRoute.jsx');
+assert.ok(fs.existsSync(roleBasedRoutePath), 'RoleBasedRoute.jsx must exist');
+const roleBasedRouteContent = fs.readFileSync(roleBasedRoutePath, 'utf8');
+
+const unauthorizedPagePath = path.join(srcDir, 'pages', 'UnauthorizedPage.jsx');
+assert.ok(fs.existsSync(unauthorizedPagePath), 'UnauthorizedPage.jsx must exist');
+const unauthorizedPageContent = fs.readFileSync(unauthorizedPagePath, 'utf8');
+
+const unauthorizedCssPath = path.join(srcDir, 'pages', 'UnauthorizedPage.css');
+assert.ok(fs.existsSync(unauthorizedCssPath), 'UnauthorizedPage.css must exist');
+
+// 19.1 Verify Route constants & AppRoutes integration
+assert.ok(routesContent.includes("UNAUTHORIZED: '/unauthorized'"), 'ROUTES.UNAUTHORIZED must be defined in routes.js');
+assert.ok(appRoutesContent.includes('ROUTES.UNAUTHORIZED'), 'AppRoutes.jsx must register ROUTES.UNAUTHORIZED');
+assert.ok(appRoutesContent.includes('UnauthorizedPage'), 'AppRoutes.jsx must import and use UnauthorizedPage');
+
+// 19.2 Verify AuthContext exports profileLoading & profileError
+const authContextDefContent = fs.readFileSync(authContextDefPath, 'utf8');
+assert.ok(authContextDefContent.includes('profileLoading: false'), 'authContextDef.js must define profileLoading');
+assert.ok(authContextDefContent.includes('profileError: null'), 'authContextDef.js must define profileError');
+assert.ok(authContextContent.includes('profileLoading,'), 'AuthContext.jsx must provide profileLoading');
+assert.ok(authContextContent.includes('profileError,'), 'AuthContext.jsx must provide profileError');
+
+// 19.3 Verify ProtectedRoute implementation
+assert.ok(protectedRouteContent.includes('useAuth'), 'ProtectedRoute must consume useAuth()');
+assert.ok(protectedRouteContent.includes('LoadingIndicator'), 'ProtectedRoute must show LoadingIndicator while loading');
+assert.ok(protectedRouteContent.includes('ROUTES.LOGIN'), 'ProtectedRoute must redirect unauthenticated users to ROUTES.LOGIN');
+assert.ok(protectedRouteContent.includes('state={{ from: location }}'), 'ProtectedRoute must preserve original target location in state.from');
+
+// 19.4 Verify RoleBasedRoute implementation
+assert.ok(roleBasedRouteContent.includes('useAuth'), 'RoleBasedRoute must consume useAuth()');
+assert.ok(roleBasedRouteContent.includes('LoadingIndicator'), 'RoleBasedRoute must show LoadingIndicator');
+assert.ok(roleBasedRouteContent.includes('ROUTES.UNAUTHORIZED'), 'RoleBasedRoute must redirect to ROUTES.UNAUTHORIZED');
+assert.ok(roleBasedRouteContent.includes("reason: 'pending_approval'"), 'RoleBasedRoute must distinguish pending_approval');
+assert.ok(roleBasedRouteContent.includes("reason: 'forbidden'"), 'RoleBasedRoute must distinguish forbidden');
+assert.ok(roleBasedRouteContent.includes("reason: 'error'"), 'RoleBasedRoute must distinguish network error without logging user out');
+
+// 19.5 Verify UnauthorizedPage features
+assert.ok(unauthorizedPageContent.includes('pending_approval'), 'UnauthorizedPage must handle pending_approval');
+assert.ok(unauthorizedPageContent.includes('forbidden'), 'UnauthorizedPage must handle forbidden');
+assert.ok(unauthorizedPageContent.includes('Check Status Again') || unauthorizedPageContent.includes('refreshProfile'), 'UnauthorizedPage must allow checking status again via refreshProfile');
+assert.ok(unauthorizedPageContent.includes('logout'), 'UnauthorizedPage must allow user logout');
+
+// 19.6 Dynamic evaluation testing using imported accessRules
+const { ROLES, ROUTE_ACCESS, evaluateAccess } = await import('../src/routes/accessRules.js');
+
+assert.strictEqual(ROLES.STUDENT, 'student');
+assert.strictEqual(ROLES.TEACHER, 'teacher');
+assert.strictEqual(ROLES.ADMIN, 'admin');
+
+assert.strictEqual(ROUTE_ACCESS.STUDENT_ONLY.requireApproval, false, 'Student routes should not require manual approval');
+assert.strictEqual(ROUTE_ACCESS.TEACHER_ONLY.requireApproval, true, 'Teacher routes must require approval');
+
+// Scenario A: Unauthenticated user accessing protected student route
+const unauthAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.STUDENT_ONLY.requireApproval,
+  isAuthenticated: false,
+});
+assert.strictEqual(unauthAccess.allowed, false);
+assert.strictEqual(unauthAccess.reason, 'not_authenticated');
+
+// Scenario B: Authenticated Student accessing Student route
+const studentStudentAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.STUDENT_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { id: 's1', role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(studentStudentAccess.allowed, true, 'Student should access student route without manual approval');
+
+// Scenario C: Authenticated Student attempting to access Teacher route
+const studentTeacherAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { id: 's1', role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(studentTeacherAccess.allowed, false);
+assert.strictEqual(studentTeacherAccess.reason, 'forbidden', 'Student accessing Teacher route must be forbidden');
+
+// Scenario D: Unapproved Teacher attempting to access Teacher route
+const unapprovedTeacherAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { id: 't1', role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(unapprovedTeacherAccess.allowed, false);
+assert.strictEqual(unapprovedTeacherAccess.reason, 'pending_approval', 'Unapproved teacher must receive pending_approval');
+
+// Scenario E: Approved Teacher accessing Teacher route
+const approvedTeacherAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { id: 't2', role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(approvedTeacherAccess.allowed, true, 'Approved teacher must be granted access');
+
+// Scenario F: Admin accessing teacher route
+const adminTeacherAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.TEACHER_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.TEACHER_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: { id: 'a1', role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(adminTeacherAccess.allowed, true, 'Admin must be granted access to teacher routes');
+
+// Scenario G: Authenticated user without profile row (e.g. sync delay or error)
+const noProfileAccess = evaluateAccess({
+  allowedRoles: ROUTE_ACCESS.STUDENT_ONLY.roles,
+  requireApproval: ROUTE_ACCESS.STUDENT_ONLY.requireApproval,
+  isAuthenticated: true,
+  profile: null,
+  role: null,
+  isApproved: false,
+});
+assert.strictEqual(noProfileAccess.allowed, false);
+assert.strictEqual(noProfileAccess.reason, 'no_profile');
+
+console.log('✔ Protected Routes & Role-Based Access Control: Guards, access rules matrix, Unauthorized page, and evaluation scenarios verified');
+
+console.log('--- All Milestone 1 to 8.6 Protected Routes verification tests passed! ---');

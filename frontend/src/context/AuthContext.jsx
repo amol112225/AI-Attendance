@@ -18,27 +18,40 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Helper to safely load profile for an authenticated user ID without throwing
   const loadProfile = useCallback(async (userId) => {
     if (!userId) {
       setProfile(null);
+      setProfileError(null);
+      setProfileLoading(false);
       return null;
     }
+    setProfileLoading(true);
+    setProfileError(null);
     try {
       const { profile: loadedProfile, error } = await getUserProfile(userId);
       if (!error && loadedProfile) {
         setProfile(loadedProfile);
+        setProfileError(null);
         return loadedProfile;
       }
       // If query fails or profile row not found yet, keep profile null
       // while preserving session and user authentication
       setProfile(null);
+      if (error) {
+        setProfileError(error);
+      }
       return null;
-    } catch {
+    } catch (err) {
       setProfile(null);
+      setProfileError(err);
       return null;
+    } finally {
+      setProfileLoading(false);
     }
   }, []);
 
@@ -145,12 +158,14 @@ export function AuthProvider({ children }) {
       role: profile?.role || null,
       isApproved: Boolean(profile?.is_approved),
       loading,
+      profileLoading,
+      profileError,
       isAuthenticated: Boolean(session && user),
       logout,
       setAuthSession,
       refreshProfile,
     }),
-    [user, session, profile, loading, logout, setAuthSession, refreshProfile]
+    [user, session, profile, loading, profileLoading, profileError, logout, setAuthSession, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

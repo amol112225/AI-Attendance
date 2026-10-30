@@ -12,6 +12,8 @@ export const AuthContext = createContext({
   role: null,
   isApproved: false,
   loading: true,
+  profileLoading: false,
+  profileError: null,
   isAuthenticated: false,
   logout: async () => {},
   setAuthSession: () => {},

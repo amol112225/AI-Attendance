@@ -14,6 +14,7 @@ import { ROUTES } from './routes';
 const HomePage = lazy(() => import('../pages/HomePage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage'));
+const UnauthorizedPage = lazy(() => import('../pages/UnauthorizedPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 export function AppRoutes() {
@@ -32,6 +33,9 @@ export function AppRoutes() {
 
         {/* Milestone 8.4: AttendAI User Login */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+
+        {/* Milestone 8.6: Access Denied / Unauthorized Route */}
+        <Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedPage />} />
 
         {/* Catch-All 404 Page */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
