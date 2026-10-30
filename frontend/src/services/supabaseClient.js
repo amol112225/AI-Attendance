@@ -1,30 +1,69 @@
 /**
- * AttendAI Supabase Service Architecture Stub
+ * AttendAI Supabase Client Configuration
+ * Milestone 8.2: Supabase Client and Authentication Service Infrastructure
  *
- * Prepared for future authentication and client-side database subscriptions.
+ * Configures the official Supabase JavaScript client with safe public credentials.
  *
  * SECURITY ARCHITECTURE GUIDELINES:
  * 1. Only the public anon/publishable key is used in the browser.
  * 2. Supabase Row Level Security (RLS) MUST be enabled on all database tables.
  * 3. Never expose or use the Supabase Service Role key in frontend code.
- * 4. User roles (student, teacher, admin) must never be trusted from client state;
- *    authorization must be validated via Supabase Auth claims and FastAPI server verification.
+ * 4. User roles (student, teacher) are strictly managed and verified on the database.
  */
 
-import { config } from '../utils/config';
+import { createClient } from '@supabase/supabase-js';
+import { config, validateSupabaseConfig } from '../utils/config.js';
 
-export const isSupabaseConfigured = () => {
-  return Boolean(config.supabase.url && config.supabase.publishableKey);
-};
+const validation = validateSupabaseConfig();
 
-/**
- * Placeholder client descriptor. In future milestones, @supabase/supabase-js
- * can be initialized here using `createClient(config.supabase.url, config.supabase.publishableKey)`.
- */
-export const supabasePlaceholder = {
-  configured: isSupabaseConfigured(),
-  url: config.supabase.url,
-};
+export const isSupabaseConfigured = () => validation.isValid;
 
-export default supabasePlaceholder;
+let clientInstance = null;
 
+if (validation.isValid) {
+  clientInstance = createClient(config.supabase.url, config.supabase.publishableKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'attendai_auth_token',
+    },
+  });
+} else {
+  // Graceful fallback for unconfigured environments (e.g. CI without env secrets)
+  // Prevents the application from crashing while warning developers in dev mode.
+  if (config.isDev) {
+    console.warn('[AttendAI Supabase Client]', validation.error || 'Supabase is not configured.');
+  }
+
+  // Stub client proxy that returns graceful errors instead of throwing runtime exceptions
+  const unconfiguredError = () =>
+    Promise.resolve({
+      data: null,
+      error: new Error(
+        validation.error || 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.'
+      ),
+    });
+
+  clientInstance = {
+    auth: {
+      signUp: unconfiguredError,
+      signInWithPassword: unconfiguredError,
+      signOut: unconfiguredError,
+      getSession: unconfiguredError,
+      getUser: unconfiguredError,
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => {} } },
+      }),
+    },
+    from: () => ({
+      select: unconfiguredError,
+      insert: unconfiguredError,
+      update: unconfiguredError,
+      delete: unconfiguredError,
+    }),
+  };
+}
+
+export const supabase = clientInstance;
+export default supabase;

@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import { formatAuthError } from '../src/services/authService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -342,4 +343,54 @@ assert.ok(homePageCssContent.includes('max-width: 360px'), 'Small mobile viewpor
 assert.ok(homePageCssContent.includes('overflow-wrap: break-word'), 'Heading overflow protection missing in HomePage.css');
 console.log('✔ Responsive polish & accessibility: All Milestone 7 safeguards verified');
 
-console.log('--- All Milestone 1 to 7 verification tests passed! ---');
+// 14. Verify Supabase Client & Auth Service Foundation (Milestone 8.2)
+assert.ok(pkg.dependencies['@supabase/supabase-js'], '@supabase/supabase-js missing from dependencies');
+
+const configJsPath = path.join(rootDir, 'src', 'utils', 'config.js');
+assert.ok(fs.existsSync(configJsPath), 'src/utils/config.js must exist');
+const configJsContent = fs.readFileSync(configJsPath, 'utf8');
+assert.ok(configJsContent.includes('validateSupabaseConfig'), 'validateSupabaseConfig missing from config.js');
+assert.ok(configJsContent.includes('service_role'), 'Security check for service_role key missing from config.js');
+
+assert.ok(fs.existsSync(supabaseClientPath), 'src/services/supabaseClient.js must exist');
+const supabaseClientContent = fs.readFileSync(supabaseClientPath, 'utf8');
+assert.ok(supabaseClientContent.includes('@supabase/supabase-js'), 'createClient from @supabase/supabase-js missing in supabaseClient.js');
+assert.ok(supabaseClientContent.includes('isSupabaseConfigured'), 'isSupabaseConfigured export missing from supabaseClient.js');
+assert.ok(supabaseClientContent.includes('attendai_auth_token'), 'Session storage key missing from supabaseClient.js');
+
+const authServicePath = path.join(rootDir, 'src', 'services', 'authService.js');
+assert.ok(fs.existsSync(authServicePath), 'src/services/authService.js must exist');
+const authServiceContent = fs.readFileSync(authServicePath, 'utf8');
+assert.ok(authServiceContent.includes('registerUser'), 'registerUser missing from authService.js');
+assert.ok(authServiceContent.includes('loginUser'), 'loginUser missing from authService.js');
+assert.ok(authServiceContent.includes('logoutUser'), 'logoutUser missing from authService.js');
+assert.ok(authServiceContent.includes('getSession'), 'getSession missing from authService.js');
+assert.ok(authServiceContent.includes('getUser'), 'getUser missing from authService.js');
+assert.ok(authServiceContent.includes('onAuthStateChange'), 'onAuthStateChange missing from authService.js');
+assert.ok(authServiceContent.includes('formatAuthError'), 'formatAuthError missing from authService.js');
+
+// Security policy assertion: Student role enforced by default; no client teacher elevation
+assert.ok(authServiceContent.includes("role: 'student'"), 'Default student role enforcement missing in registerUser');
+assert.ok(!authServiceContent.includes('requested_role'), 'Prohibited requested_role metadata found in authService.js');
+
+// Unit tests for formatAuthError
+assert.strictEqual(
+  formatAuthError(new Error('Invalid login credentials')),
+  'Invalid email or password. Please verify your credentials and try again.'
+);
+assert.strictEqual(
+  formatAuthError(new Error('Email not confirmed')),
+  'Your email address has not been confirmed yet. Please check your inbox for the confirmation link.'
+);
+assert.strictEqual(
+  formatAuthError(new Error('User already registered')),
+  'An account with this email address already exists. Please log in instead.'
+);
+assert.strictEqual(
+  formatAuthError({ status: 429, message: 'Too many requests' }),
+  'Too many login attempts. Please wait a few moments and try again.'
+);
+assert.strictEqual(formatAuthError(null), '');
+console.log('✔ Supabase Auth Foundation: Client, authService, and role security safeguards verified');
+
+console.log('--- All Milestone 1 to 8.2 verification tests passed! ---');
