@@ -75,12 +75,12 @@ export function DashboardHeader({
 
         <button
           type="button"
-          className="dashboard-sidebar__logout-btn"
-          style={{ width: 'auto', padding: 'var(--space-1) var(--space-3)' }}
+          className="dashboard-header__logout-btn"
           onClick={onLogout}
           title={`Signed in as ${displayName}. Click to sign out.`}
+          aria-label="Sign out of AttendAI"
         >
-          <LogOut size={14} aria-hidden="true" />
+          <LogOut size={15} aria-hidden="true" />
           <span style={{ display: 'none' }}>Sign Out</span>
         </button>
       </div>

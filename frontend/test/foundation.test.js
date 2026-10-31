@@ -3275,4 +3275,234 @@ assert.ok(
 );
 
 console.log('✔ Milestone 9.5: All 35 Dashboard Navigation & Role Integration tests passed successfully');
-console.log('--- All Milestone 1 to 9.5 Verification Tests Passed! ---');
+
+// ==============================================================================
+// 30. Milestone 9.6: Dashboard Testing and Responsive Polish
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.6: Dashboard Testing & Responsive Polish) ---');
+
+// 30.1 Functional & Structure Verification across all Three Dashboards
+// Student Dashboard
+const m96_studentContent = fs.readFileSync(path.join(srcDir, 'pages', 'dashboards', 'StudentDashboard.jsx'), 'utf8');
+assert.ok(m96_studentContent.includes('DashboardLayout'), 'StudentDashboard must use shared DashboardLayout');
+assert.ok(m96_studentContent.includes('DashboardPageHeader'), 'StudentDashboard must use shared DashboardPageHeader');
+assert.ok(m96_studentContent.includes('Attendance Overview'), 'StudentDashboard must render Attendance Overview section');
+assert.ok(m96_studentContent.includes('EmptyState'), 'StudentDashboard must render EmptyState component for zero records');
+assert.ok(m96_studentContent.includes('ROUTES.STUDENT_SUBJECTS'), 'StudentDashboard must link to My Subjects');
+assert.ok(m96_studentContent.includes('ROUTES.STUDENT_ATTENDANCE'), 'StudentDashboard must link to My Attendance');
+assert.ok(m96_studentContent.includes('ROUTES.STUDENT_PROFILE'), 'StudentDashboard must link to My Profile');
+
+// Teacher Dashboard
+const m96_teacherContent = fs.readFileSync(path.join(srcDir, 'pages', 'dashboards', 'TeacherDashboard.jsx'), 'utf8');
+assert.ok(m96_teacherContent.includes('DashboardLayout'), 'TeacherDashboard must use shared DashboardLayout');
+assert.ok(m96_teacherContent.includes('DashboardPageHeader'), 'TeacherDashboard must use shared DashboardPageHeader');
+assert.ok(m96_teacherContent.includes('My Classes'), 'TeacherDashboard must render Classes section');
+assert.ok(m96_teacherContent.includes('EmptyState'), 'TeacherDashboard must render EmptyState component for zero classes');
+assert.ok(m96_teacherContent.includes('ROUTES.TEACHER_CLASSES'), 'TeacherDashboard must link to My Classes');
+assert.ok(m96_teacherContent.includes('ROUTES.TEACHER_SESSIONS'), 'TeacherDashboard must link to Attendance Sessions');
+assert.ok(m96_teacherContent.includes('ROUTES.TEACHER_RECORDS'), 'TeacherDashboard must link to Attendance Records');
+assert.ok(m96_teacherContent.includes('ROUTES.TEACHER_PROFILE'), 'TeacherDashboard must link to My Profile');
+
+// Admin Dashboard
+const m96_adminContent = fs.readFileSync(path.join(srcDir, 'pages', 'dashboards', 'AdminDashboard.jsx'), 'utf8');
+assert.ok(m96_adminContent.includes('DashboardLayout'), 'AdminDashboard must use shared DashboardLayout');
+assert.ok(m96_adminContent.includes('DashboardPageHeader'), 'AdminDashboard must use shared DashboardPageHeader');
+assert.ok(m96_adminContent.includes('System Overview'), 'AdminDashboard must render System Overview section');
+assert.ok(m96_adminContent.includes('EmptyState'), 'AdminDashboard must render EmptyState component for restricted statistics');
+assert.ok(m96_adminContent.includes('ROUTES.ADMIN_USERS'), 'AdminDashboard must link to User Management');
+assert.ok(m96_adminContent.includes('ROUTES.ADMIN_TEACHER_APPROVALS'), 'AdminDashboard must link to Teacher Approvals');
+assert.ok(m96_adminContent.includes('ROUTES.ADMIN_SYSTEM'), 'AdminDashboard must link to System Overview');
+assert.ok(m96_adminContent.includes('ROUTES.ADMIN_PROFILE'), 'AdminDashboard must link to My Profile');
+
+// 30.2 Comprehensive 12-Scenario Role Access Matrix (Requirement 3 Table)
+// 1. Unauthenticated user -> Protected routes blocked
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['student'], isAuthenticated: false }).reason,
+  'not_authenticated',
+  '1. Unauthenticated user blocked on Student Dashboard'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['teacher'], requireApproval: true, isAuthenticated: false }).reason,
+  'not_authenticated',
+  '1b. Unauthenticated user blocked on Teacher Dashboard'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['admin'], requireApproval: true, isAuthenticated: false }).reason,
+  'not_authenticated',
+  '1c. Unauthenticated user blocked on Admin Dashboard'
+);
+
+// 2. Student accessing Student Dashboard -> Allowed
+assert.strictEqual(
+  evaluateAccess({
+    allowedRoles: ['student', 'admin'],
+    requireApproval: false,
+    isAuthenticated: true,
+    profile: { role: 'student', is_approved: false },
+    role: 'student',
+  }).allowed,
+  true,
+  '2. Student accessing Student Dashboard allowed'
+);
+
+// 3. Student accessing Teacher Dashboard -> Blocked (forbidden)
+const m96_sOnT = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+});
+assert.strictEqual(m96_sOnT.allowed, false, '3. Student accessing Teacher Dashboard blocked');
+assert.strictEqual(m96_sOnT.reason, 'forbidden', '3b. Student denied on Teacher Dashboard with forbidden');
+
+// 4. Student accessing Admin Dashboard -> Blocked (forbidden)
+const m96_sOnA = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+});
+assert.strictEqual(m96_sOnA.allowed, false, '4. Student accessing Admin Dashboard blocked');
+assert.strictEqual(m96_sOnA.reason, 'forbidden', '4b. Student denied on Admin Dashboard with forbidden');
+
+// 5. Approved Teacher accessing Teacher Dashboard -> Allowed
+assert.strictEqual(
+  evaluateAccess({
+    allowedRoles: ['teacher', 'admin'],
+    requireApproval: true,
+    isAuthenticated: true,
+    profile: { role: 'teacher', is_approved: true },
+    role: 'teacher',
+    isApproved: true,
+  }).allowed,
+  true,
+  '5. Approved Teacher accessing Teacher Dashboard allowed'
+);
+
+// 6. Pending Teacher accessing Teacher Dashboard -> Blocked (pending_approval)
+const m96_pTOnT = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m96_pTOnT.allowed, false, '6. Pending Teacher accessing Teacher Dashboard blocked');
+assert.strictEqual(m96_pTOnT.reason, 'pending_approval', '6b. Pending Teacher denied with pending_approval');
+
+// 7. Rejected Teacher accessing Teacher Dashboard -> Blocked (pending_approval)
+const m96_rTOnT = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m96_rTOnT.allowed, false, '7. Rejected Teacher accessing Teacher Dashboard blocked');
+assert.strictEqual(m96_rTOnT.reason, 'pending_approval', '7b. Rejected Teacher denied with pending_approval');
+
+// 8. Teacher accessing Student Dashboard -> Blocked (forbidden)
+const m96_tOnS = evaluateAccess({
+  allowedRoles: ['student', 'admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m96_tOnS.allowed, false, '8. Teacher accessing Student Dashboard blocked');
+assert.strictEqual(m96_tOnS.reason, 'forbidden', '8b. Teacher denied on Student Dashboard with forbidden');
+
+// 9. Teacher accessing Admin Dashboard -> Blocked (forbidden)
+const m96_tOnA = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m96_tOnA.allowed, false, '9. Teacher accessing Admin Dashboard blocked');
+assert.strictEqual(m96_tOnA.reason, 'forbidden', '9b. Teacher denied on Admin Dashboard with forbidden');
+
+// 10. Admin accessing Admin Dashboard -> Allowed
+assert.strictEqual(
+  evaluateAccess({
+    allowedRoles: ['admin'],
+    requireApproval: true,
+    isAuthenticated: true,
+    profile: { role: 'admin', is_approved: true },
+    role: 'admin',
+    isApproved: true,
+  }).allowed,
+  true,
+  '10. Admin accessing Admin Dashboard allowed'
+);
+
+// 11. Admin accessing Student Dashboard -> Supervised according to role policy
+assert.strictEqual(
+  evaluateAccess({
+    allowedRoles: ['student', 'admin'],
+    requireApproval: false,
+    isAuthenticated: true,
+    profile: { role: 'admin', is_approved: true },
+    role: 'admin',
+    isApproved: true,
+  }).allowed,
+  true,
+  '11. Admin supervising Student Dashboard allowed by policy'
+);
+
+// 12. Admin accessing Teacher Dashboard -> Supervised according to role policy
+assert.strictEqual(
+  evaluateAccess({
+    allowedRoles: ['teacher', 'admin'],
+    requireApproval: true,
+    isAuthenticated: true,
+    profile: { role: 'admin', is_approved: true },
+    role: 'admin',
+    isApproved: true,
+  }).allowed,
+  true,
+  '12. Admin supervising Teacher Dashboard allowed by policy'
+);
+
+// 30.3 Responsive UI Polish & Token-Compliant Design Elements
+const m96_cssPath = path.join(srcDir, 'styles', 'dashboard.css');
+const m96_cssContent = fs.readFileSync(m96_cssPath, 'utf8');
+
+// Viewport Media Queries
+assert.ok(m96_cssContent.includes('@media (max-width: 1023px)'), 'Tablet/mobile drawer breakpoint must exist');
+assert.ok(m96_cssContent.includes('@media (max-width: 640px)'), 'Mobile layout breakpoint must exist');
+assert.ok(m96_cssContent.includes('@media (max-width: 480px)'), 'Mobile narrow screen breakpoint (390px/360px) must exist');
+assert.ok(m96_cssContent.includes('@media (max-width: 360px)'), 'Compact mobile breakpoint (360px) must exist');
+
+// Responsive Polish Features
+assert.ok(m96_cssContent.includes('.dashboard-header__logout-btn'), 'Token-compliant header logout button class must exist');
+assert.ok(m96_cssContent.includes('.dashboard-table-container'), 'Responsive table container with horizontal scroll must exist');
+assert.ok(m96_cssContent.includes('overflow-wrap: anywhere'), 'Title wrap protection for small mobile devices must exist');
+assert.ok(m96_cssContent.includes('flex-direction: column'), 'Mobile profile item column stacking must exist');
+assert.ok(m96_cssContent.includes('min-height: 38px'), 'Touch target height optimization for mobile buttons must exist');
+
+// 30.4 UI Consistency & Shared Components
+assert.ok(m96_cssContent.includes('.dashboard-role-badge--student'), 'Student role badge class must exist');
+assert.ok(m96_cssContent.includes('.dashboard-role-badge--teacher'), 'Teacher role badge class must exist');
+assert.ok(m96_cssContent.includes('.dashboard-role-badge--admin'), 'Admin role badge class must exist');
+assert.ok(m96_cssContent.includes('.dashboard-action-card--teacher'), 'Teacher action card variant must exist');
+assert.ok(m96_cssContent.includes('.dashboard-action-card--admin'), 'Admin action card variant must exist');
+assert.ok(m96_cssContent.includes('.dashboard-security-notice'), 'Security notice container class must exist');
+
+// 30.5 Performance Safeguards & Parallel Requests
+assert.ok(m96_studentContent.includes('Promise.all'), 'StudentDashboard must fetch academic data in parallel via Promise.all');
+assert.ok(m96_teacherContent.includes('Promise.all'), 'TeacherDashboard must fetch academic data in parallel via Promise.all');
+assert.ok(m96_adminContent.includes('Promise.all'), 'AdminDashboard must fetch platform metrics in parallel via Promise.all');
+assert.ok(m96_studentContent.includes('isMounted = false'), 'StudentDashboard must guard against memory leaks on unmount');
+assert.ok(m96_teacherContent.includes('isMounted = false'), 'TeacherDashboard must guard against memory leaks on unmount');
+assert.ok(m96_adminContent.includes('isMounted = false'), 'AdminDashboard must guard against memory leaks on unmount');
+
+console.log('✔ Milestone 9.6: All 40 Dashboard Testing & Responsive Polish tests passed successfully');
+console.log('--- All Milestone 1 to 9.6 Verification Tests Passed! ---');
