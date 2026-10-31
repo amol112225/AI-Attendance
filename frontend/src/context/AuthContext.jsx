@@ -152,16 +152,21 @@ export function AuthProvider({ children }) {
     setSession(newSession);
     const currentUser = newSession?.user ?? null;
     setUser(currentUser);
+    let loadedProfile = null;
+    let loadedTeacherRequest = null;
     if (currentUser?.id) {
-      await Promise.all([
+      const [profileRes, requestRes] = await Promise.all([
         loadProfile(currentUser.id),
         loadTeacherRequest(currentUser.id),
       ]);
+      loadedProfile = profileRes;
+      loadedTeacherRequest = requestRes;
     } else {
       setProfile(null);
       setTeacherRequest(null);
     }
     setLoading(false);
+    return { profile: loadedProfile, teacherRequest: loadedTeacherRequest };
   }, [loadProfile, loadTeacherRequest]);
 
   // Manual trigger to refresh profile data (e.g. after administrative role changes)

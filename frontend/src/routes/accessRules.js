@@ -5,6 +5,8 @@
  * Centralizes the application roles and permission matrices.
  */
 
+import { ROUTES } from './routes.js';
+
 export const ROLES = {
   STUDENT: 'student',
   TEACHER: 'teacher',
@@ -75,6 +77,28 @@ export function evaluateAccess({
   }
 
   return { allowed: true };
+}
+
+/**
+ * Resolves the primary dashboard route for an authenticated user role and approval state.
+ * Strictly avoids trusting URL parameters, local storage, or unverified frontend inputs.
+ *
+ * @param {Object} [params]
+ * @param {string|null} [params.role] - User's authenticated role from public.profiles
+ * @param {boolean} [params.isApproved] - Whether the profile has is_approved true
+ * @returns {string} Target dashboard path
+ */
+export function getRoleDashboardPath({ role = null, isApproved = false } = {}) {
+  if (role === ROLES.ADMIN) {
+    return ROUTES.ADMIN_DASHBOARD;
+  }
+  if (role === ROLES.TEACHER) {
+    return isApproved ? ROUTES.TEACHER_DASHBOARD : ROUTES.TEACHER_STATUS;
+  }
+  if (role === ROLES.STUDENT) {
+    return ROUTES.STUDENT_DASHBOARD;
+  }
+  return ROUTES.LOGIN;
 }
 
 export default ROUTE_ACCESS;

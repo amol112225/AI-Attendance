@@ -810,3 +810,91 @@
   border: 1px solid var(--color-danger-border);
 }
 
+/* Teacher Portal Variants (Milestone 9.3) */
+.dashboard-stat-card__icon-box--amber {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.dashboard-action-card--teacher:hover {
+  border-color: #a855f7;
+}
+
+.dashboard-action-card--teacher:hover .dashboard-action-card__arrow {
+  color: #c084fc;
+}
+
+.dashboard-action-card__icon--teacher {
+  background-color: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+}
+
+.dashboard-status-pill--active {
+  background-color: var(--color-brand-cyan-subtle);
+  color: var(--color-brand-cyan);
+  border: 1px solid var(--color-border-cyan);
+}
+
+.dashboard-status-pill--completed {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.dashboard-status-pill--pending {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+}
+
+/* Administrator Portal Variants (Milestone 9.4) */
+.dashboard-action-card--admin:hover {
+  border-color: #f59e0b;
+}
+
+.dashboard-action-card--admin:hover .dashboard-action-card__arrow {
+  color: #fbbf24;
+}
+
+.dashboard-action-card__icon--admin {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.dashboard-security-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-security-notice__icon {
+  color: var(--color-warning);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.dashboard-security-notice__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-security-notice__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-warning);
+  margin: 0;
+}
+
+.dashboard-security-notice__desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+

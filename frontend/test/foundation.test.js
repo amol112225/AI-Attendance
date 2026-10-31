@@ -2619,4 +2619,660 @@ assert.ok(m92_dashboardCssContent.includes('.dashboard-profile-list'), '.dashboa
 assert.ok(m92_dashboardCssContent.includes('.dashboard-activity-list'), '.dashboard-activity-list class missing in dashboard.css');
 
 console.log('✔ Milestone 9.2: All 28 Student Dashboard & Academic Overview tests passed successfully');
-console.log('--- All Milestone 1 to 9.2 Verification Tests Passed! ---');
+
+// ==============================================================================
+// 27. Milestone 9.3: Teacher Dashboard
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.3: Teacher Dashboard) ---');
+
+// 27.1 Component & Service File Existence
+const m93_teacherServicePath = path.join(srcDir, 'services', 'teacherService.js');
+assert.ok(fs.existsSync(m93_teacherServicePath), 'teacherService.js must exist');
+const m93_teacherServiceContent = fs.readFileSync(m93_teacherServicePath, 'utf8');
+assert.ok(m93_teacherServiceContent.includes('getTeacherOverview'), 'getTeacherOverview export missing');
+assert.ok(m93_teacherServiceContent.includes('getTeacherClasses'), 'getTeacherClasses export missing');
+assert.ok(m93_teacherServiceContent.includes('getTeacherSessions'), 'getTeacherSessions export missing');
+assert.ok(m93_teacherServiceContent.includes('getTeacherRecentActivity'), 'getTeacherRecentActivity export missing');
+
+const m93_teacherDashPath = path.join(srcDir, 'pages', 'dashboards', 'TeacherDashboard.jsx');
+assert.ok(fs.existsSync(m93_teacherDashPath), 'TeacherDashboard.jsx must exist');
+const m93_teacherDashContent = fs.readFileSync(m93_teacherDashPath, 'utf8');
+
+// 27.2 Shared Layout Integration
+assert.ok(m93_teacherDashContent.includes('DashboardLayout'), 'TeacherDashboard must use shared DashboardLayout');
+assert.ok(m93_teacherDashContent.includes('DashboardPageHeader'), 'TeacherDashboard must use shared DashboardPageHeader');
+assert.ok(m93_teacherDashContent.includes("breadcrumb=\"Faculty Portal\""), 'Breadcrumb must indicate Faculty Portal');
+assert.ok(m93_teacherDashContent.includes('Approved Faculty'), 'Role badge must indicate Approved Faculty');
+
+// 27.3 Personalized Welcome & Non-Hardcoded Profile Info
+assert.ok(m93_teacherDashContent.includes('displayName'), 'Personalized welcome must use dynamic displayName');
+assert.ok(m93_teacherDashContent.includes('profile?.full_name'), 'TeacherDashboard must read from profile.full_name');
+assert.ok(m93_teacherDashContent.includes('user?.email'), 'TeacherDashboard must display dynamic user.email');
+assert.ok(m93_teacherDashContent.includes('Welcome back,'), 'Welcome heading must greet the authenticated teacher');
+
+// 27.4 Defensive Teacher Service with Unmigrated / Missing Backend Tables
+const {
+  getTeacherOverview,
+  getTeacherClasses,
+  getTeacherSessions,
+  getTeacherRecentActivity,
+} = await import('../src/services/teacherService.js');
+
+const m93_mockOverviewRes = await getTeacherOverview(null);
+assert.strictEqual(m93_mockOverviewRes.totalClasses, 0, 'Null teacherId returns 0 total classes');
+assert.strictEqual(m93_mockOverviewRes.totalStudents, 0, 'Null teacherId returns 0 total students');
+assert.strictEqual(m93_mockOverviewRes.activeSessions, 0, 'Null teacherId returns 0 active sessions');
+assert.strictEqual(m93_mockOverviewRes.completedSessions, 0, 'Null teacherId returns 0 completed sessions');
+assert.strictEqual(m93_mockOverviewRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+const m93_mockClassesRes = await getTeacherClasses(null);
+assert.strictEqual(m93_mockClassesRes.classes.length, 0, 'Null teacherId returns empty classes array');
+assert.strictEqual(m93_mockClassesRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+const m93_mockSessionsRes = await getTeacherSessions(null);
+assert.strictEqual(m93_mockSessionsRes.sessions.length, 0, 'Null teacherId returns empty sessions array');
+assert.strictEqual(m93_mockSessionsRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+const m93_mockActivityRes = await getTeacherRecentActivity(null);
+assert.strictEqual(m93_mockActivityRes.activities.length, 0, 'Null teacherId returns empty activities array');
+assert.strictEqual(m93_mockActivityRes.isAvailable, false, 'isAvailable flag is false when unconfigured');
+
+// 27.5 Dashboard Overview Section & Empty State (No Fabricated Metrics)
+assert.ok(m93_teacherDashContent.includes('Academic Overview'), 'Academic Overview section heading missing');
+assert.ok(m93_teacherDashContent.includes('Classroom Metrics Inactive'), 'Empty state title for inactive metrics missing');
+assert.ok(m93_teacherDashContent.includes('Assigned Classes'), 'Assigned Classes metric label missing');
+assert.ok(m93_teacherDashContent.includes('Total Students'), 'Total Students metric label missing');
+assert.ok(m93_teacherDashContent.includes('Active Sessions'), 'Active Sessions metric label missing');
+assert.ok(m93_teacherDashContent.includes('Completed Sessions'), 'Completed Sessions metric label missing');
+
+// 27.6 My Classes Section & Empty State
+assert.ok(m93_teacherDashContent.includes('My Classes'), 'My Classes heading missing');
+assert.ok(m93_teacherDashContent.includes('No Courses Assigned'), 'Empty state for assigned courses missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_CLASSES'), 'Link to TEACHER_CLASSES missing');
+
+// 27.7 Attendance Sessions Overview Section & Empty State
+assert.ok(m93_teacherDashContent.includes('Attendance Sessions'), 'Attendance Sessions heading missing');
+assert.ok(m93_teacherDashContent.includes('No Attendance Sessions'), 'Empty state for attendance sessions missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_SESSIONS'), 'Link to TEACHER_SESSIONS missing');
+
+// 27.8 Recent Activity Section & Empty State
+assert.ok(m93_teacherDashContent.includes('Recent Activity'), 'Recent Activity heading missing');
+assert.ok(m93_teacherDashContent.includes('No Recent Activity'), 'Empty state for recent activity missing');
+
+// 27.9 Quick Actions Navigation Links
+assert.ok(m93_teacherDashContent.includes('Quick Actions'), 'Quick Actions heading missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_CLASSES'), 'Quick action link to TEACHER_CLASSES missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_SESSIONS'), 'Quick action link to TEACHER_SESSIONS missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_RECORDS'), 'Quick action link to TEACHER_RECORDS missing');
+assert.ok(m93_teacherDashContent.includes('ROUTES.TEACHER_PROFILE'), 'Quick action link to TEACHER_PROFILE missing');
+
+// 27.10 Profile Integration & Approval Status
+assert.ok(m93_teacherDashContent.includes('Faculty Profile'), 'Faculty Profile card heading missing');
+assert.ok(m93_teacherDashContent.includes('profileLoading'), 'profileLoading state check missing');
+assert.ok(m93_teacherDashContent.includes('profileError'), 'profileError state check missing');
+assert.ok(m93_teacherDashContent.includes('Approved Faculty Member'), 'Approved status indicator missing');
+assert.ok(m93_teacherDashContent.includes('formatAuthError'), 'formatAuthError sanitization missing in TeacherDashboard');
+
+// 27.11 Route & RBAC Security Verification
+const m93_appRoutesContent = fs.readFileSync(appRoutesPath, 'utf8');
+assert.ok(
+  m93_appRoutesContent.includes("path={ROUTES.TEACHER_DASHBOARD}"),
+  'ROUTES.TEACHER_DASHBOARD route registration missing'
+);
+assert.ok(
+  m93_appRoutesContent.includes("allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]}"),
+  'TEACHER_DASHBOARD must restrict access to teacher and admin roles'
+);
+assert.ok(
+  m93_appRoutesContent.includes("requireApproval={true}"),
+  'TEACHER_DASHBOARD must require administrative approval'
+);
+
+// RBAC evaluation matrix verification for Teacher Dashboard
+// 1. Approved Teacher -> Allowed
+const m93_approvedTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m93_approvedTeacherAccess.allowed, true, 'Approved Teacher must have access to Teacher Dashboard');
+
+// 2. Student -> Forbidden
+const m93_studentOnTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m93_studentOnTeacherAccess.allowed, false, 'Student must NOT have access to Teacher Dashboard');
+assert.strictEqual(m93_studentOnTeacherAccess.reason, 'forbidden', 'Student denied with forbidden status');
+
+// 3. Pending Teacher -> Pending Approval
+const m93_pendingTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m93_pendingTeacherAccess.allowed, false, 'Pending Teacher must NOT have access to Teacher Dashboard');
+assert.strictEqual(m93_pendingTeacherAccess.reason, 'pending_approval', 'Pending Teacher denied with pending_approval status');
+
+// 4. Rejected Teacher -> Pending Approval
+const m93_rejectedTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m93_rejectedTeacherAccess.allowed, false, 'Rejected Teacher must NOT have access to Teacher Dashboard');
+assert.strictEqual(m93_rejectedTeacherAccess.reason, 'pending_approval', 'Rejected Teacher denied with pending_approval status');
+
+// 5. Unauthenticated User -> Not Authenticated
+const m93_unauthTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: false,
+  profile: null,
+  role: null,
+  isApproved: false,
+});
+assert.strictEqual(m93_unauthTeacherAccess.allowed, false, 'Unauthenticated user denied access to Teacher Dashboard');
+assert.strictEqual(m93_unauthTeacherAccess.reason, 'not_authenticated', 'Unauthenticated user denied with not_authenticated status');
+
+// 6. Admin Supervision -> Allowed
+const m93_adminOnTeacherAccess = evaluateAccess({
+  allowedRoles: ['teacher', 'admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m93_adminOnTeacherAccess.allowed, true, 'Admin can supervise Teacher Dashboard');
+
+// 27.12 Design System Classes in dashboard.css
+const m93_dashboardCssPath = path.join(srcDir, 'styles', 'dashboard.css');
+const m93_dashboardCssContent = fs.readFileSync(m93_dashboardCssPath, 'utf8');
+assert.ok(m93_dashboardCssContent.includes('.dashboard-action-card--teacher'), '.dashboard-action-card--teacher missing in dashboard.css');
+assert.ok(m93_dashboardCssContent.includes('.dashboard-action-card__icon--teacher'), '.dashboard-action-card__icon--teacher missing in dashboard.css');
+assert.ok(m93_dashboardCssContent.includes('.dashboard-stat-card__icon-box--amber'), '.dashboard-stat-card__icon-box--amber missing in dashboard.css');
+assert.ok(m93_dashboardCssContent.includes('.dashboard-status-pill--active'), '.dashboard-status-pill--active missing in dashboard.css');
+assert.ok(m93_dashboardCssContent.includes('.dashboard-status-pill--completed'), '.dashboard-status-pill--completed missing in dashboard.css');
+
+console.log('✔ Milestone 9.3: All 32 Teacher Dashboard & Faculty Portal tests passed successfully');
+
+// ==============================================================================
+// 28. Milestone 9.4: Admin Dashboard
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.4: Admin Dashboard) ---');
+
+// 28.1 Component & Service File Existence
+const m94_adminServicePath = path.join(srcDir, 'services', 'adminService.js');
+assert.ok(fs.existsSync(m94_adminServicePath), 'adminService.js must exist');
+const m94_adminServiceContent = fs.readFileSync(m94_adminServicePath, 'utf8');
+assert.ok(m94_adminServiceContent.includes('getAdminSystemMetrics'), 'getAdminSystemMetrics export missing');
+assert.ok(m94_adminServiceContent.includes('getPendingTeacherApprovalsSummary'), 'getPendingTeacherApprovalsSummary export missing');
+
+const m94_adminDashPath = path.join(srcDir, 'pages', 'dashboards', 'AdminDashboard.jsx');
+assert.ok(fs.existsSync(m94_adminDashPath), 'AdminDashboard.jsx must exist');
+const m94_adminDashContent = fs.readFileSync(m94_adminDashPath, 'utf8');
+
+// 28.2 Shared Layout Integration
+assert.ok(m94_adminDashContent.includes('DashboardLayout'), 'AdminDashboard must use shared DashboardLayout');
+assert.ok(m94_adminDashContent.includes('DashboardPageHeader'), 'AdminDashboard must use shared DashboardPageHeader');
+assert.ok(m94_adminDashContent.includes("breadcrumb=\"Admin Console\""), 'Breadcrumb must indicate Admin Console');
+assert.ok(m94_adminDashContent.includes('System Administrator'), 'Role badge must indicate System Administrator');
+
+// 28.3 Personalized Welcome & Non-Hardcoded Profile Info
+assert.ok(m94_adminDashContent.includes('displayName'), 'Personalized welcome must use dynamic displayName');
+assert.ok(m94_adminDashContent.includes('profile?.full_name'), 'AdminDashboard must read from profile.full_name');
+assert.ok(m94_adminDashContent.includes('user?.email'), 'AdminDashboard must display dynamic user.email');
+assert.ok(m94_adminDashContent.includes('Welcome back,'), 'Welcome heading must greet the authenticated administrator');
+
+// 28.4 Defensive Admin Service with RLS Evaluation
+const {
+  getAdminSystemMetrics,
+  getPendingTeacherApprovalsSummary,
+} = await import('../src/services/adminService.js');
+
+const m94_mockMetricsRes = await getAdminSystemMetrics(null);
+assert.strictEqual(m94_mockMetricsRes.studentsCount, null, 'Null adminId returns null students count');
+assert.strictEqual(m94_mockMetricsRes.teachersCount, null, 'Null adminId returns null teachers count');
+assert.strictEqual(m94_mockMetricsRes.approvedTeachersCount, null, 'Null adminId returns null approved teachers count');
+assert.strictEqual(m94_mockMetricsRes.pendingRequestsCount, null, 'Null adminId returns null pending requests count');
+assert.strictEqual(m94_mockMetricsRes.totalUsersCount, null, 'Null adminId returns null total users count');
+assert.strictEqual(m94_mockMetricsRes.isRestrictedByRls, false, 'isRestrictedByRls is false when unconfigured');
+assert.strictEqual(m94_mockMetricsRes.isAvailable, false, 'isAvailable is false when unconfigured');
+
+const m94_mockApprovalsRes = await getPendingTeacherApprovalsSummary(null);
+assert.strictEqual(m94_mockApprovalsRes.pendingCount, null, 'Null adminId returns null pending count');
+
+// 28.5 System Overview Section & RLS Restriction Notice
+assert.ok(m94_adminDashContent.includes('System Overview'), 'System Overview heading missing');
+assert.ok(m94_adminDashContent.includes('Total Registered Users'), 'Total Registered Users label missing');
+assert.ok(m94_adminDashContent.includes('Registered Students'), 'Registered Students label missing');
+assert.ok(m94_adminDashContent.includes('Registered Teachers'), 'Registered Teachers label missing');
+assert.ok(m94_adminDashContent.includes('Approved Teachers'), 'Approved Teachers label missing');
+assert.ok(m94_adminDashContent.includes('Pending Approvals'), 'Pending Approvals label missing');
+assert.ok(m94_adminDashContent.includes('dashboard-security-notice'), 'Security notice container missing in AdminDashboard');
+assert.ok(m94_adminDashContent.includes('System-Wide Statistics Restricted'), 'Empty state for restricted system stats missing');
+
+// 28.6 Teacher Approvals Section & Overview
+assert.ok(m94_adminDashContent.includes('Teacher Approvals'), 'Teacher Approvals section missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_TEACHER_APPROVALS'), 'Link to ADMIN_TEACHER_APPROVALS missing');
+assert.ok(m94_adminDashContent.includes('Teacher Approval Queue'), 'Teacher Approval Queue empty state title missing');
+
+// 28.7 User Management Section & Overview
+assert.ok(m94_adminDashContent.includes('User Management'), 'User Management section missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_USERS'), 'Link to ADMIN_USERS missing');
+assert.ok(m94_adminDashContent.includes('Student Directory'), 'Student Directory summary label missing');
+assert.ok(m94_adminDashContent.includes('Faculty Directory'), 'Faculty Directory summary label missing');
+
+// 28.8 Quick Actions Navigation Links
+assert.ok(m94_adminDashContent.includes('Quick Actions'), 'Quick Actions heading missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_USERS'), 'Quick action link to ADMIN_USERS missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_TEACHER_APPROVALS'), 'Quick action link to ADMIN_TEACHER_APPROVALS missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_SYSTEM'), 'Quick action link to ADMIN_SYSTEM missing');
+assert.ok(m94_adminDashContent.includes('ROUTES.ADMIN_PROFILE'), 'Quick action link to ADMIN_PROFILE missing');
+
+// 28.9 Admin Profile Integration
+assert.ok(m94_adminDashContent.includes('Admin Profile'), 'Admin Profile card heading missing');
+assert.ok(m94_adminDashContent.includes('profileLoading'), 'profileLoading state check missing');
+assert.ok(m94_adminDashContent.includes('profileError'), 'profileError state check missing');
+assert.ok(m94_adminDashContent.includes('Tier 1 Full Governance'), 'Clearance tier indicator missing');
+assert.ok(m94_adminDashContent.includes('formatAuthError'), 'formatAuthError sanitization missing in AdminDashboard');
+
+// 28.10 Route & RBAC Security Verification for Admin Dashboard
+const m94_appRoutesContent = fs.readFileSync(appRoutesPath, 'utf8');
+assert.ok(
+  m94_appRoutesContent.includes("path={ROUTES.ADMIN_DASHBOARD}"),
+  'ROUTES.ADMIN_DASHBOARD route registration missing'
+);
+assert.ok(
+  m94_appRoutesContent.includes("allowedRoles={[ROLES.ADMIN]}"),
+  'ADMIN_DASHBOARD must restrict access exclusively to admin role'
+);
+assert.ok(
+  m94_appRoutesContent.includes("requireApproval={true}"),
+  'ADMIN_DASHBOARD must require approval status'
+);
+
+// RBAC evaluation matrix verification for Admin Dashboard
+// 1. Approved Admin -> Allowed
+const m94_adminAccess = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m94_adminAccess.allowed, true, 'Approved Admin must have access to Admin Dashboard');
+
+// 2. Student -> Forbidden
+const m94_studentOnAdminAccess = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m94_studentOnAdminAccess.allowed, false, 'Student must NOT have access to Admin Dashboard');
+assert.strictEqual(m94_studentOnAdminAccess.reason, 'forbidden', 'Student denied with forbidden status');
+
+// 3. Approved Teacher -> Forbidden
+const m94_teacherOnAdminAccess = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m94_teacherOnAdminAccess.allowed, false, 'Approved Teacher must NOT have access to Admin Dashboard');
+assert.strictEqual(m94_teacherOnAdminAccess.reason, 'forbidden', 'Teacher denied with forbidden status');
+
+// 4. Pending Teacher -> Forbidden
+const m94_pendingTeacherOnAdminAccess = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m94_pendingTeacherOnAdminAccess.allowed, false, 'Pending Teacher must NOT have access to Admin Dashboard');
+assert.strictEqual(m94_pendingTeacherOnAdminAccess.reason, 'forbidden', 'Pending Teacher denied with forbidden status');
+
+// 5. Unauthenticated User -> Not Authenticated
+const m94_unauthAdminAccess = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: false,
+  profile: null,
+  role: null,
+  isApproved: false,
+});
+assert.strictEqual(m94_unauthAdminAccess.allowed, false, 'Unauthenticated user denied access to Admin Dashboard');
+assert.strictEqual(m94_unauthAdminAccess.reason, 'not_authenticated', 'Unauthenticated user denied with not_authenticated status');
+
+// 28.11 Design System Classes in dashboard.css
+const m94_dashboardCssPath = path.join(srcDir, 'styles', 'dashboard.css');
+const m94_dashboardCssContent = fs.readFileSync(m94_dashboardCssPath, 'utf8');
+assert.ok(m94_dashboardCssContent.includes('.dashboard-action-card--admin'), '.dashboard-action-card--admin missing in dashboard.css');
+assert.ok(m94_dashboardCssContent.includes('.dashboard-action-card__icon--admin'), '.dashboard-action-card__icon--admin missing in dashboard.css');
+assert.ok(m94_dashboardCssContent.includes('.dashboard-security-notice'), '.dashboard-security-notice missing in dashboard.css');
+assert.ok(m94_dashboardCssContent.includes('.dashboard-security-notice__title'), '.dashboard-security-notice__title missing in dashboard.css');
+
+console.log('✔ Milestone 9.4: All 32 Admin Dashboard tests passed successfully');
+
+// ==============================================================================
+// 29. Milestone 9.5: Dashboard Navigation and Role-Based Integration
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Milestone 9.5: Dashboard Navigation & Role Integration) ---');
+
+// 29.1 Central Route Constants & Dashboard Entry
+const { ROUTES: m95_ROUTES } = await import('../src/routes/routes.js');
+assert.ok(m95_ROUTES.DASHBOARD === '/dashboard', 'ROUTES.DASHBOARD must be defined as /dashboard');
+assert.ok(m95_ROUTES.STUDENT_DASHBOARD === '/student/dashboard', 'ROUTES.STUDENT_DASHBOARD must be /student/dashboard');
+assert.ok(m95_ROUTES.TEACHER_DASHBOARD === '/teacher/dashboard', 'ROUTES.TEACHER_DASHBOARD must be /teacher/dashboard');
+assert.ok(m95_ROUTES.ADMIN_DASHBOARD === '/admin/dashboard', 'ROUTES.ADMIN_DASHBOARD must be /admin/dashboard');
+
+// 29.2 RoleDashboardRedirect Component & AppRoutes Integration
+const m95_redirectPath = path.join(srcDir, 'routes', 'RoleDashboardRedirect.jsx');
+assert.ok(fs.existsSync(m95_redirectPath), 'RoleDashboardRedirect.jsx must exist');
+const m95_redirectContent = fs.readFileSync(m95_redirectPath, 'utf8');
+assert.ok(m95_redirectContent.includes('getRoleDashboardPath'), 'RoleDashboardRedirect must use getRoleDashboardPath');
+assert.ok(m95_redirectContent.includes('loading || profileLoading'), 'RoleDashboardRedirect must guard loading state');
+assert.ok(m95_redirectContent.includes('ROUTES.LOGIN'), 'RoleDashboardRedirect must redirect unauthenticated to login');
+assert.ok(m95_redirectContent.includes('ROUTES.UNAUTHORIZED'), 'RoleDashboardRedirect must redirect forbidden/missing profile to unauthorized');
+
+const m95_appRoutesContent = fs.readFileSync(appRoutesPath, 'utf8');
+assert.ok(m95_appRoutesContent.includes('RoleDashboardRedirect'), 'AppRoutes must import RoleDashboardRedirect');
+assert.ok(m95_appRoutesContent.includes('path={ROUTES.DASHBOARD}'), 'AppRoutes must mount ROUTES.DASHBOARD');
+
+// 29.3 Centralized Role Dashboard Resolver (getRoleDashboardPath)
+const { getRoleDashboardPath } = await import('../src/routes/accessRules.js');
+assert.strictEqual(typeof getRoleDashboardPath, 'function', 'getRoleDashboardPath must be an exported function');
+
+// Student resolution
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'student', isApproved: false }),
+  '/student/dashboard',
+  'Student maps to /student/dashboard'
+);
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'student', isApproved: true }),
+  '/student/dashboard',
+  'Student maps to /student/dashboard regardless of approval flag'
+);
+
+// Teacher resolution
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'teacher', isApproved: true }),
+  '/teacher/dashboard',
+  'Approved teacher maps to /teacher/dashboard'
+);
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'teacher', isApproved: false }),
+  '/teacher/status',
+  'Pending/unapproved teacher maps to /teacher/status'
+);
+
+// Admin resolution
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'admin', isApproved: true }),
+  '/admin/dashboard',
+  'Admin maps to /admin/dashboard'
+);
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'admin', isApproved: false }),
+  '/admin/dashboard',
+  'Admin maps to /admin/dashboard'
+);
+
+// Edge cases: null, empty, unknown
+assert.strictEqual(
+  getRoleDashboardPath({ role: null }),
+  '/login',
+  'Null role defaults safely to /login'
+);
+assert.strictEqual(
+  getRoleDashboardPath({ role: 'unknown_role' }),
+  '/login',
+  'Unknown role defaults safely to /login'
+);
+
+// 29.4 Role Access Matrix: Table Verification from Milestone 9.5
+// Scenario 1: Unauthenticated -> Cannot access protected dashboards
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['student'], isAuthenticated: false }).allowed,
+  false,
+  'Unauthenticated cannot access Student Dashboard'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['teacher'], requireApproval: true, isAuthenticated: false }).allowed,
+  false,
+  'Unauthenticated cannot access Teacher Dashboard'
+);
+assert.strictEqual(
+  evaluateAccess({ allowedRoles: ['admin'], requireApproval: true, isAuthenticated: false }).allowed,
+  false,
+  'Unauthenticated cannot access Admin Dashboard'
+);
+
+// Scenario 2: Student -> Can access Student Dashboard only
+const m95_studentOnStudent = evaluateAccess({
+  allowedRoles: ['student'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m95_studentOnStudent.allowed, true, 'Student can access Student Dashboard');
+
+const m95_studentOnTeacher = evaluateAccess({
+  allowedRoles: ['teacher'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m95_studentOnTeacher.allowed, false, 'Student cannot access Teacher Dashboard');
+assert.strictEqual(m95_studentOnTeacher.reason, 'forbidden', 'Student on Teacher Dashboard denied with forbidden');
+
+const m95_studentOnAdmin = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m95_studentOnAdmin.allowed, false, 'Student cannot access Admin Dashboard');
+assert.strictEqual(m95_studentOnAdmin.reason, 'forbidden', 'Student on Admin Dashboard denied with forbidden');
+
+// Scenario 3: Approved Teacher -> Can access Teacher Dashboard only
+const m95_approvedTeacherOnTeacher = evaluateAccess({
+  allowedRoles: ['teacher'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m95_approvedTeacherOnTeacher.allowed, true, 'Approved Teacher can access Teacher Dashboard');
+
+const m95_teacherOnStudent = evaluateAccess({
+  allowedRoles: ['student'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m95_teacherOnStudent.allowed, false, 'Teacher cannot access Student Dashboard');
+assert.strictEqual(m95_teacherOnStudent.reason, 'forbidden', 'Teacher on Student Dashboard denied with forbidden');
+
+const m95_teacherOnAdmin = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m95_teacherOnAdmin.allowed, false, 'Teacher cannot access Admin Dashboard');
+assert.strictEqual(m95_teacherOnAdmin.reason, 'forbidden', 'Teacher on Admin Dashboard denied with forbidden');
+
+// Scenario 4: Pending Teacher -> Cannot access Teacher Dashboard
+const m95_pendingTeacherOnTeacher = evaluateAccess({
+  allowedRoles: ['teacher'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m95_pendingTeacherOnTeacher.allowed, false, 'Pending Teacher cannot access Teacher Dashboard');
+assert.strictEqual(m95_pendingTeacherOnTeacher.reason, 'pending_approval', 'Pending Teacher denied with pending_approval');
+
+// Scenario 5: Rejected Teacher -> Cannot access Teacher Dashboard
+const m95_rejectedTeacherOnTeacher = evaluateAccess({
+  allowedRoles: ['teacher'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m95_rejectedTeacherOnTeacher.allowed, false, 'Rejected Teacher cannot access Teacher Dashboard');
+assert.strictEqual(m95_rejectedTeacherOnTeacher.reason, 'pending_approval', 'Rejected Teacher denied with pending_approval');
+
+// Scenario 6: Admin -> Can access Admin Dashboard
+const m95_adminOnAdmin = evaluateAccess({
+  allowedRoles: ['admin'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: true },
+  role: 'admin',
+  isApproved: true,
+});
+assert.strictEqual(m95_adminOnAdmin.allowed, true, 'Admin can access Admin Dashboard');
+
+// 29.5 Role Navigation Configuration Verification
+const m95_navConfigPath = path.join(srcDir, 'components', 'dashboard', 'navigationConfig.jsx');
+assert.ok(fs.existsSync(m95_navConfigPath), 'navigationConfig.jsx must exist');
+const m95_navContent = fs.readFileSync(m95_navConfigPath, 'utf8');
+
+// Student Navigation Items
+assert.ok(m95_navContent.includes("[ROLES.STUDENT]:"), 'Student navigation block must exist');
+assert.ok(m95_navContent.includes("label: 'Dashboard'"), 'Dashboard label must exist in navigation config');
+assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_DASHBOARD'), 'Student Dashboard route must be configured');
+assert.ok(m95_navContent.includes("label: 'My Attendance'"), 'My Attendance label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_ATTENDANCE'), 'Student Attendance route must be configured');
+assert.ok(m95_navContent.includes("label: 'My Subjects'"), 'My Subjects label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_SUBJECTS'), 'Student Subjects route must be configured');
+assert.ok(m95_navContent.includes("label: 'My Profile'"), 'My Profile label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_PROFILE'), 'Student Profile route must be configured');
+
+// Teacher Navigation Items
+assert.ok(m95_navContent.includes("[ROLES.TEACHER]:"), 'Teacher navigation block must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.TEACHER_DASHBOARD'), 'Teacher Dashboard route must be configured');
+assert.ok(m95_navContent.includes("label: 'My Classes'"), 'My Classes label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.TEACHER_CLASSES'), 'Teacher Classes route must be configured');
+assert.ok(m95_navContent.includes("label: 'Attendance Sessions'"), 'Attendance Sessions label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.TEACHER_SESSIONS'), 'Teacher Sessions route must be configured');
+assert.ok(m95_navContent.includes("label: 'Attendance Records'"), 'Attendance Records label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.TEACHER_RECORDS'), 'Teacher Records route must be configured');
+assert.ok(m95_navContent.includes('to: ROUTES.TEACHER_PROFILE'), 'Teacher Profile route must be configured');
+
+// Admin Navigation Items
+assert.ok(m95_navContent.includes("[ROLES.ADMIN]:"), 'Admin navigation block must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.ADMIN_DASHBOARD'), 'Admin Dashboard route must be configured');
+assert.ok(m95_navContent.includes("label: 'User Management'"), 'User Management label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.ADMIN_USERS'), 'Admin Users route must be configured');
+assert.ok(m95_navContent.includes("label: 'Teacher Approvals'"), 'Teacher Approvals label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.ADMIN_TEACHER_APPROVALS'), 'Admin Teacher Approvals route must be configured');
+assert.ok(m95_navContent.includes("label: 'System Overview'"), 'System Overview label must exist');
+assert.ok(m95_navContent.includes('to: ROUTES.ADMIN_SYSTEM'), 'Admin System route must be configured');
+assert.ok(m95_navContent.includes('to: ROUTES.ADMIN_PROFILE'), 'Admin Profile route must be configured');
+
+// 29.6 Navigation Isolation & No Student Fallback
+const m95_dashNavPath = path.join(srcDir, 'components', 'dashboard', 'DashboardNavigation.jsx');
+const m95_dashNavContent = fs.readFileSync(m95_dashNavPath, 'utf8');
+assert.ok(
+  !m95_dashNavContent.includes('NAVIGATION_CONFIG[ROLES.STUDENT]'),
+  'DashboardNavigation must NOT fall back to Student navigation for invalid roles'
+);
+assert.ok(
+  m95_dashNavContent.includes('role && NAVIGATION_CONFIG[role]'),
+  'DashboardNavigation must strictly index NAVIGATION_CONFIG for verified role'
+);
+assert.ok(
+  m95_dashNavContent.includes('dashboard-nav-item__link--active'),
+  'DashboardNavigation must highlight active route via dashboard-nav-item__link--active'
+);
+
+// 29.7 Shared Layout Defensive Flash & Loading Guards
+const m95_layoutPath = path.join(srcDir, 'components', 'dashboard', 'DashboardLayout.jsx');
+const m95_layoutContent = fs.readFileSync(m95_layoutPath, 'utf8');
+assert.ok(
+  !m95_layoutContent.includes("role || 'student'"),
+  'DashboardLayout must NOT assume Student role when role is unassigned'
+);
+assert.ok(
+  m95_layoutContent.includes('loading || profileLoading'),
+  'DashboardLayout must guard against rendering during active authentication hydration'
+);
+assert.ok(
+  m95_layoutContent.includes('profileError && !profile'),
+  'DashboardLayout must render safe error state on profile retrieval failure'
+);
+
+// 29.8 Login Page Post-Authentication Role Redirection
+const m95_loginPath = path.join(srcDir, 'pages', 'LoginPage.jsx');
+const m95_loginContent = fs.readFileSync(m95_loginPath, 'utf8');
+assert.ok(
+  m95_loginContent.includes('getRoleDashboardPath'),
+  'LoginPage must dynamically compute role dashboard path via getRoleDashboardPath'
+);
+assert.ok(
+  m95_loginContent.includes('ROUTES.DASHBOARD'),
+  'LoginPage authenticated notice must provide link to ROUTES.DASHBOARD'
+);
+
+// 29.9 Navbar Role Separation
+const m95_navbarPath = path.join(srcDir, 'components', 'common', 'Navbar.jsx');
+const m95_navbarContent = fs.readFileSync(m95_navbarPath, 'utf8');
+assert.ok(
+  m95_navbarContent.includes('ROUTES.TEACHER_DASHBOARD'),
+  'Navbar must link approved faculty to TEACHER_DASHBOARD'
+);
+assert.ok(
+  m95_navbarContent.includes('ROUTES.TEACHER_STATUS'),
+  'Navbar must link unapproved/pending faculty to TEACHER_STATUS'
+);
+assert.ok(
+  m95_navbarContent.includes('ROUTES.ADMIN_DASHBOARD'),
+  'Navbar must link administrator to ADMIN_DASHBOARD'
+);
+assert.ok(
+  m95_navbarContent.includes('ROUTES.STUDENT_DASHBOARD'),
+  'Navbar must link student to STUDENT_DASHBOARD'
+);
+
+console.log('✔ Milestone 9.5: All 35 Dashboard Navigation & Role Integration tests passed successfully');
+console.log('--- All Milestone 1 to 9.5 Verification Tests Passed! ---');

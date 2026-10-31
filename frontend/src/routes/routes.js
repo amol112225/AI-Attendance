@@ -18,6 +18,9 @@ export const ROUTES = {
   // Milestone 8.6 (Access Control & RBAC):
   UNAUTHORIZED: '/unauthorized',
 
+  // Milestone 9.5 (Role Dashboard Resolution):
+  DASHBOARD: '/dashboard',
+
   // Milestone 9.1 (Student Dashboard & Sections):
   STUDENT_DASHBOARD: '/student/dashboard',
   STUDENT_ATTENDANCE: '/student/attendance',

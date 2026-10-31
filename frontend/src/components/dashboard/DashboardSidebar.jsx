@@ -15,7 +15,7 @@ import { ROLES } from '../../routes/accessRules';
 export function DashboardSidebar({
   isOpen = false,
   onClose,
-  role = 'student',
+  role = null,
   user = null,
   profile = null,
   onLogout,
@@ -30,13 +30,15 @@ export function DashboardSidebar({
   const getDashboardHome = () => {
     if (role === ROLES.TEACHER) return ROUTES.TEACHER_DASHBOARD;
     if (role === ROLES.ADMIN) return ROUTES.ADMIN_DASHBOARD;
-    return ROUTES.STUDENT_DASHBOARD;
+    if (role === ROLES.STUDENT) return ROUTES.STUDENT_DASHBOARD;
+    return ROUTES.DASHBOARD;
   };
 
   const getRoleLabel = () => {
     if (role === ROLES.TEACHER) return 'Faculty';
     if (role === ROLES.ADMIN) return 'Administrator';
-    return 'Student';
+    if (role === ROLES.STUDENT) return 'Student';
+    return 'User';
   };
 
   return (
@@ -71,12 +73,14 @@ export function DashboardSidebar({
 
       {/* Navigation Links Area */}
       <div className="dashboard-sidebar__nav-container">
-        <div>
-          <div className="dashboard-sidebar__section-title">
-            {getRoleLabel()} Portal
+        {role && (
+          <div>
+            <div className="dashboard-sidebar__section-title">
+              {getRoleLabel()} Portal
+            </div>
+            <DashboardNavigation role={role} onItemClick={onClose} />
           </div>
-          <DashboardNavigation role={role} onItemClick={onClose} />
-        </div>
+        )}
       </div>
 
       {/* User Profile & Logout Footer */}

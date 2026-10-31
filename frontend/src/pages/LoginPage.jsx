@@ -15,6 +15,7 @@ import { ErrorMessage } from '../components/common/ErrorMessage';
 import { loginUser, formatAuthError } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes/routes';
+import { getRoleDashboardPath } from '../routes/accessRules';
 import './LoginPage.css';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,12 +100,25 @@ export function LoginPage() {
       }
 
       if (data?.session) {
-        await setAuthSession(data.session);
+        const authState = await setAuthSession(data.session);
         const from = location.state?.from?.pathname;
-        const destination =
-          from && from !== ROUTES.LOGIN && from !== ROUTES.REGISTER
-            ? from
-            : ROUTES.ROOT;
+        let destination;
+        if (
+          from &&
+          from !== ROUTES.LOGIN &&
+          from !== ROUTES.REGISTER &&
+          from !== ROUTES.TEACHER_LOGIN &&
+          from !== ROUTES.TEACHER_REGISTER &&
+          from !== ROUTES.ROOT &&
+          from !== ROUTES.DASHBOARD
+        ) {
+          destination = from;
+        } else {
+          destination = getRoleDashboardPath({
+            role: authState?.profile?.role,
+            isApproved: Boolean(authState?.profile?.is_approved),
+          });
+        }
         navigate(destination, { replace: true });
       } else {
         // Fallback for safety
@@ -134,6 +148,14 @@ export function LoginPage() {
               <div className="login-authenticated-actions">
                 <Button
                   variant="primary"
+                  size="md"
+                  type="button"
+                  onClick={() => navigate(ROUTES.DASHBOARD)}
+                >
+                  Go to Dashboard
+                </Button>
+                <Button
+                  variant="outline"
                   size="md"
                   type="button"
                   onClick={() => navigate(ROUTES.ROOT)}

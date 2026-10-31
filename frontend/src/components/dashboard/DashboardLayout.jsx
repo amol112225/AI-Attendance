@@ -9,6 +9,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { LoadingIndicator } from '../common/LoadingIndicator';
+import { ErrorMessage } from '../common/ErrorMessage';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardHeader } from './DashboardHeader';
 import { ROUTES } from '../../routes/routes';
@@ -16,7 +18,7 @@ import '../../styles/dashboard.css';
 
 export function DashboardLayout({ children, breadcrumb = null }) {
   const navigate = useNavigate();
-  const { user, profile, role, logout } = useAuth();
+  const { user, profile, role, loading, profileLoading, profileError, logout } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const toggleMobileSidebar = useCallback(() => {
@@ -67,6 +69,28 @@ export function DashboardLayout({ children, breadcrumb = null }) {
     navigate(ROUTES.ROOT);
   };
 
+  // Guard against flash during initial auth or active profile query
+  if (loading || profileLoading) {
+    return (
+      <div className="dashboard-layout" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <LoadingIndicator centered size="lg" message="Loading dashboard environment..." />
+      </div>
+    );
+  }
+
+  // Safe error display if profile retrieval failed without guessing student/admin
+  if (profileError && !profile) {
+    return (
+      <div className="dashboard-layout" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)' }}>
+        <ErrorMessage
+          message="Could not load your user profile record. Please check your connection or sign in again."
+          actionLabel="Sign Out"
+          onAction={handleLogout}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-layout">
       {/* Mobile Backdrop Overlay */}
@@ -82,7 +106,7 @@ export function DashboardLayout({ children, breadcrumb = null }) {
       <DashboardSidebar
         isOpen={isMobileSidebarOpen}
         onClose={closeMobileSidebar}
-        role={role || 'student'}
+        role={role}
         user={user}
         profile={profile}
         onLogout={handleLogout}
@@ -92,7 +116,7 @@ export function DashboardLayout({ children, breadcrumb = null }) {
       <div className="dashboard-content-wrapper">
         <DashboardHeader
           onMenuToggle={toggleMobileSidebar}
-          role={role || 'student'}
+          role={role}
           user={user}
           profile={profile}
           onLogout={handleLogout}

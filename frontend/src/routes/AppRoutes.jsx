@@ -29,6 +29,9 @@ const StudentDashboard = lazy(() => import('../pages/dashboards/StudentDashboard
 const TeacherDashboard = lazy(() => import('../pages/dashboards/TeacherDashboard'));
 const AdminDashboard = lazy(() => import('../pages/dashboards/AdminDashboard'));
 
+// Milestone 9.5: Centralized Role Dashboard Redirection
+const RoleDashboardRedirect = lazy(() => import('./RoleDashboardRedirect'));
+
 export function AppRoutes() {
   return (
     <Suspense
@@ -63,6 +66,9 @@ export function AppRoutes() {
 
         {/* Milestone 8.6: Access Denied / Unauthorized Route */}
         <Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedPage />} />
+
+        {/* Milestone 9.5: Centralized Role Dashboard Redirection */}
+        <Route path={ROUTES.DASHBOARD} element={<RoleDashboardRedirect />} />
 
         {/* ==================================================================
             Milestone 9.1: Student Dashboard & Sub-routes

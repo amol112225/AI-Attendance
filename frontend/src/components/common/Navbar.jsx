@@ -198,13 +198,13 @@ export function Navbar({
                   >
                     Faculty Portal
                   </Link>
-                ) : teacherRequest?.status === 'pending' ? (
+                ) : (role === 'teacher' && !isApproved) || teacherRequest?.status === 'pending' ? (
                   <Link
                     to={ROUTES.TEACHER_STATUS}
                     className="navbar__pending-pill"
                     title="View Teacher Application Status"
                   >
-                    Teacher Pending
+                    Teacher Status
                   </Link>
                 ) : role === 'admin' ? (
                   <Link
@@ -349,13 +349,13 @@ export function Navbar({
                       Student Dashboard →
                     </Link>
                   )}
-                  {teacherRequest?.status === 'pending' && !isApproved && (
+                  {((role === 'teacher' && !isApproved) || teacherRequest?.status === 'pending') && !isApproved && (
                     <Link
                       to={ROUTES.TEACHER_STATUS}
                       className="navbar__mobile-link"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Teacher Application Status (Pending) →
+                      Teacher Application Status →
                     </Link>
                   )}
                   <Button

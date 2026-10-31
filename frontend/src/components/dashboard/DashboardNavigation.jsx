@@ -8,10 +8,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NAVIGATION_CONFIG } from './navigationConfig';
-import { ROLES } from '../../routes/accessRules';
 
 export function DashboardNavigation({ role, onItemClick }) {
-  const items = NAVIGATION_CONFIG[role] || NAVIGATION_CONFIG[ROLES.STUDENT];
+  const items = role && NAVIGATION_CONFIG[role] ? NAVIGATION_CONFIG[role] : [];
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <nav className="dashboard-navigation" aria-label="Dashboard Navigation">

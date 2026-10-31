@@ -11,7 +11,7 @@ import { ROLES } from '../../routes/accessRules';
 
 export function DashboardHeader({
   onMenuToggle,
-  role = 'student',
+  role = null,
   user = null,
   profile = null,
   onLogout,
@@ -37,11 +37,14 @@ export function DashboardHeader({
         </span>
       );
     }
-    return (
-      <span className="dashboard-role-badge dashboard-role-badge--student">
-        Student
-      </span>
-    );
+    if (role === ROLES.STUDENT) {
+      return (
+        <span className="dashboard-role-badge dashboard-role-badge--student">
+          Student
+        </span>
+      );
+    }
+    return null;
   };
 
   return (
@@ -62,7 +65,7 @@ export function DashboardHeader({
           <span>AttendAI</span>
           <ChevronRight size={14} aria-hidden="true" />
           <span className="dashboard-header__breadcrumb-active">
-            {breadcrumb || (role === ROLES.TEACHER ? 'Faculty' : role === ROLES.ADMIN ? 'Admin' : 'Student')}
+            {breadcrumb || (role === ROLES.TEACHER ? 'Faculty' : role === ROLES.ADMIN ? 'Admin' : role === ROLES.STUDENT ? 'Student' : 'Console')}
           </span>
         </div>
       </div>
