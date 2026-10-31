@@ -40,7 +40,7 @@ import {
 import { formatAuthError } from '../../services/authService';
 import { ROUTES } from '../../routes/routes';
 
-export function TeacherDashboard() {
+export function TeacherDashboard({ previewMode = false, onExitPreview = null }) {
   const { user, profile, isApproved, profileLoading, profileError, refreshProfile } = useAuth();
 
   // State for academic classes and session records
@@ -71,6 +71,25 @@ export function TeacherDashboard() {
     let isMounted = true;
 
     async function loadTeacherAcademicData() {
+      // In preview mode, the authenticated user is an administrator previewing the UI;
+      // Do not attempt to query faculty class tables with admin credentials.
+      if (previewMode) {
+        if (isMounted) {
+          setOverviewMetrics({
+            totalClasses: 0,
+            totalStudents: 0,
+            activeSessions: 0,
+            completedSessions: 0,
+            isAvailable: true,
+          });
+          setClassesData({ classes: [], isAvailable: true });
+          setSessionsData({ sessions: [], isAvailable: true });
+          setActivitiesData({ activities: [], isAvailable: true });
+          setDataLoading(false);
+        }
+        return;
+      }
+
       if (!user?.id) {
         if (isMounted) setDataLoading(false);
         return;
@@ -109,7 +128,7 @@ export function TeacherDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, previewMode]);
 
   // Dynamic teacher display name
   const displayName =
@@ -137,6 +156,36 @@ export function TeacherDashboard() {
 
   return (
     <DashboardLayout breadcrumb="Faculty Portal">
+      {/* Preview Mode Banner */}
+      {previewMode && (
+        <aside
+          className="dashboard-preview-banner dashboard-preview-banner--teacher"
+          role="region"
+          aria-label="Preview Mode Notice"
+        >
+          <div className="dashboard-preview-banner__content">
+            <span className="dashboard-preview-banner__badge dashboard-preview-banner__badge--teacher">
+              PREVIEW MODE
+            </span>
+            <div className="dashboard-preview-banner__text">
+              <strong>Viewing as Teacher (UI Preview)</strong>
+              <span>
+                You are previewing the Faculty Portal with administrator privileges. No faculty session is active, and no teacher records have been altered.
+              </span>
+            </div>
+          </div>
+          {onExitPreview && (
+            <button
+              type="button"
+              className="dashboard-preview-banner__exit-btn"
+              onClick={onExitPreview}
+            >
+              Exit Preview Mode
+            </button>
+          )}
+        </aside>
+      )}
+
       {/* 1. Personalized Welcome Header */}
       <DashboardPageHeader
         badge={

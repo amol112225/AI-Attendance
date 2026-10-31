@@ -21,6 +21,9 @@ export const config = {
     publishableKey: envPublishableKey,
   },
 
+  // Demo Admin Configuration (for testing/reference)
+  demoAdminEmail: (metaEnv.VITE_DEMO_ADMIN_EMAIL || 'admin.amol@attendai.edu').trim(),
+
   // Environment mode
   isDev: Boolean(metaEnv.DEV),
   isProd: Boolean(metaEnv.PROD),

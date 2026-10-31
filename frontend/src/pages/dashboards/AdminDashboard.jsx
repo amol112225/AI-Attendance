@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Users,
   ShieldCheck,
@@ -25,6 +25,8 @@ import {
   RefreshCw,
   BarChart3,
   Lock,
+  Eye,
+  BookOpen,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { DashboardPageHeader } from '../../components/dashboard/DashboardPageHeader';
@@ -38,6 +40,8 @@ import {
 } from '../../services/adminService';
 import { formatAuthError } from '../../services/authService';
 import { ROUTES } from '../../routes/routes';
+import { StudentDashboard } from './StudentDashboard';
+import { TeacherDashboard } from './TeacherDashboard';
 
 export function AdminDashboard() {
   const { user, profile, isApproved, profileLoading, profileError, refreshProfile } = useAuth();
@@ -60,6 +64,23 @@ export function AdminDashboard() {
   });
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState(null);
+
+  // Dashboard Preview Mode State (Admin-Only Testing Capability)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const previewParam = searchParams.get('preview');
+  const [activePreview, setActivePreview] = useState(previewParam || 'admin');
+
+  // Active view synced with URL parameter
+  const currentView = previewParam || activePreview || 'admin';
+
+  const handleSwitchView = (view) => {
+    setActivePreview(view);
+    if (view === 'admin') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ preview: view });
+    }
+  };
 
   // Fetch real system metrics for authenticated administrator
   useEffect(() => {
@@ -123,6 +144,26 @@ export function AdminDashboard() {
 
   const hasMetrics = metrics.isAvailable && metrics.totalUsersCount !== null;
 
+  // Render Student Dashboard Preview Mode
+  if (currentView === 'student') {
+    return (
+      <StudentDashboard
+        previewMode={true}
+        onExitPreview={() => handleSwitchView('admin')}
+      />
+    );
+  }
+
+  // Render Teacher Dashboard Preview Mode
+  if (currentView === 'teacher') {
+    return (
+      <TeacherDashboard
+        previewMode={true}
+        onExitPreview={() => handleSwitchView('admin')}
+      />
+    );
+  }
+
   return (
     <DashboardLayout breadcrumb="Admin Console">
       {/* A. Personalized Welcome Section */}
@@ -151,6 +192,59 @@ export function AdminDashboard() {
           </div>
         }
       />
+
+      {/* Dashboard Preview Section (Admin Testing Feature) */}
+      <section
+        className="dashboard-preview-card"
+        aria-labelledby="heading-dashboard-preview"
+      >
+        <div className="dashboard-preview-card__header">
+          <div className="dashboard-preview-card__icon-wrap">
+            <Eye size={20} className="dashboard-preview-card__icon" aria-hidden="true" />
+          </div>
+          <div className="dashboard-preview-card__text">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <h2 id="heading-dashboard-preview" className="dashboard-preview-card__title">
+                Dashboard Preview Mode
+              </h2>
+              <span className="dashboard-preview-pill">Admin Tool</span>
+            </div>
+            <p className="dashboard-preview-card__desc">
+              Administrator testing control. Preview the Student and Teacher dashboards directly without creating mock accounts or altering your administrative privileges.
+            </p>
+          </div>
+        </div>
+
+        <div className="dashboard-preview-buttons">
+          <button
+            type="button"
+            className="dashboard-preview-btn dashboard-preview-btn--active"
+            onClick={() => handleSwitchView('admin')}
+            aria-pressed="true"
+          >
+            <ShieldCheck size={16} />
+            <span>Admin Console (Active)</span>
+          </button>
+          <button
+            type="button"
+            className="dashboard-preview-btn dashboard-preview-btn--student"
+            onClick={() => handleSwitchView('student')}
+            aria-label="Preview Student Dashboard"
+          >
+            <GraduationCap size={16} />
+            <span>Preview Student Dashboard</span>
+          </button>
+          <button
+            type="button"
+            className="dashboard-preview-btn dashboard-preview-btn--teacher"
+            onClick={() => handleSwitchView('teacher')}
+            aria-label="Preview Teacher Dashboard"
+          >
+            <BookOpen size={16} />
+            <span>Preview Teacher Dashboard</span>
+          </button>
+        </div>
+      </section>
 
       {/* Profile Error Notice */}
       {profileError && (

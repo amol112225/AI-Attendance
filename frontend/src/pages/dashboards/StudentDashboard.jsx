@@ -34,7 +34,7 @@ import { getStudentAttendance, getStudentSubjects } from '../../services/student
 import { formatAuthError } from '../../services/authService';
 import { ROUTES } from '../../routes/routes';
 
-export function StudentDashboard() {
+export function StudentDashboard({ previewMode = false, onExitPreview = null }) {
   const { user, profile, profileLoading, profileError, refreshProfile } = useAuth();
 
   // State for academic attendance and subject records
@@ -58,6 +58,27 @@ export function StudentDashboard() {
     let isMounted = true;
 
     async function loadStudentAcademicData() {
+      // In preview mode, the authenticated user is an administrator previewing the UI;
+      // Do not attempt to query student attendance tables with admin credentials.
+      if (previewMode) {
+        if (isMounted) {
+          setAttendanceData({
+            records: [],
+            total: 0,
+            attended: 0,
+            missed: 0,
+            rate: 0,
+            isAvailable: true,
+          });
+          setSubjectsData({
+            subjects: [],
+            isAvailable: true,
+          });
+          setDataLoading(false);
+        }
+        return;
+      }
+
       if (!user?.id) {
         if (isMounted) setDataLoading(false);
         return;
@@ -92,7 +113,7 @@ export function StudentDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, previewMode]);
 
   // Dynamic user display name
   const displayName =
@@ -118,6 +139,34 @@ export function StudentDashboard() {
 
   return (
     <DashboardLayout breadcrumb="Student Portal">
+      {/* Preview Mode Banner */}
+      {previewMode && (
+        <aside
+          className="dashboard-preview-banner dashboard-preview-banner--student"
+          role="region"
+          aria-label="Preview Mode Notice"
+        >
+          <div className="dashboard-preview-banner__content">
+            <span className="dashboard-preview-banner__badge">PREVIEW MODE</span>
+            <div className="dashboard-preview-banner__text">
+              <strong>Viewing as Student (UI Preview)</strong>
+              <span>
+                You are previewing the Student Dashboard with administrator privileges. No student session is active, and no student records have been altered.
+              </span>
+            </div>
+          </div>
+          {onExitPreview && (
+            <button
+              type="button"
+              className="dashboard-preview-banner__exit-btn"
+              onClick={onExitPreview}
+            >
+              Exit Preview Mode
+            </button>
+          )}
+        </aside>
+      )}
+
       {/* 1. Personalized Welcome Header */}
       <DashboardPageHeader
         badge={

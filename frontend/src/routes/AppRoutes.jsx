@@ -158,7 +158,7 @@ export function AppRoutes() {
         <Route
           path={ROUTES.ADMIN_DASHBOARD}
           element={
-            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={false}>
               <AdminDashboard />
             </RoleBasedRoute>
           }
@@ -167,7 +167,7 @@ export function AppRoutes() {
         <Route
           path={ROUTES.ADMIN_USERS}
           element={
-            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={false}>
               <AdminDashboard />
             </RoleBasedRoute>
           }
@@ -175,7 +175,7 @@ export function AppRoutes() {
         <Route
           path={ROUTES.ADMIN_TEACHER_APPROVALS}
           element={
-            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={false}>
               <AdminDashboard />
             </RoleBasedRoute>
           }
@@ -183,7 +183,7 @@ export function AppRoutes() {
         <Route
           path={ROUTES.ADMIN_SYSTEM}
           element={
-            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={false}>
               <AdminDashboard />
             </RoleBasedRoute>
           }
@@ -191,7 +191,7 @@ export function AppRoutes() {
         <Route
           path={ROUTES.ADMIN_PROFILE}
           element={
-            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={true}>
+            <RoleBasedRoute allowedRoles={[ROLES.ADMIN]} requireApproval={false}>
               <AdminDashboard />
             </RoleBasedRoute>
           }

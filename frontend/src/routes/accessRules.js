@@ -35,7 +35,7 @@ export const ROUTE_ACCESS = {
   },
   ADMIN_ONLY: {
     roles: [ROLES.ADMIN],
-    requireApproval: true,
+    requireApproval: false, // Administrators are provisioned via trusted setup; no approval required
   },
 };
 
@@ -72,7 +72,9 @@ export function evaluateAccess({
     return { allowed: false, reason: 'forbidden' };
   }
 
-  if (requireApproval && !isApproved) {
+  // Only roles requiring approval (Teachers) are blocked if not approved.
+  // Students and Administrators NEVER require approval.
+  if (requireApproval && role === ROLES.TEACHER && !isApproved) {
     return { allowed: false, reason: 'pending_approval' };
   }
 

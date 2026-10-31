@@ -88,7 +88,7 @@ export function RoleBasedRoute({
   }
 
   // 6. Approval check (e.g. for Teachers who must be approved before accessing Teacher routes)
-  if (requireApproval && !isApproved) {
+  if (requireApproval && role === 'teacher' && !isApproved) {
     return (
       <Navigate
         to={ROUTES.UNAUTHORIZED}

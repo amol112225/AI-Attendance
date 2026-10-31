@@ -212,7 +212,10 @@ export function AuthProvider({ children }) {
       session,
       profile,
       role: profile?.role || null,
-      isApproved: Boolean(profile?.is_approved),
+      isApproved:
+        profile?.role === 'student' || profile?.role === 'admin'
+          ? true
+          : Boolean(profile?.is_approved),
       loading,
       profileLoading,
       profileError,

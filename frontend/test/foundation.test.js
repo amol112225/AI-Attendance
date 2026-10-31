@@ -3505,4 +3505,161 @@ assert.ok(m96_teacherContent.includes('isMounted = false'), 'TeacherDashboard mu
 assert.ok(m96_adminContent.includes('isMounted = false'), 'AdminDashboard must guard against memory leaks on unmount');
 
 console.log('✔ Milestone 9.6: All 40 Dashboard Testing & Responsive Polish tests passed successfully');
-console.log('--- All Milestone 1 to 9.6 Verification Tests Passed! ---');
+
+// ==============================================================================
+// 31. Student Approval Fix, AMOL Admin Demo Account & Dashboard Preview Mode
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Student Approval Fix, AMOL Admin & Preview Mode) ---');
+
+// 31.1 Student Approval Fix: Database Trigger Migration
+const m31_fixMigrationPath = path.join(rootDir, '..', 'supabase', 'migrations', '20261031000000_fix_student_approval_and_admin_role.sql');
+assert.ok(fs.existsSync(m31_fixMigrationPath), 'Student approval fix migration must exist in supabase/migrations');
+const m31_fixMigrationContent = fs.readFileSync(m31_fixMigrationPath, 'utf8');
+assert.ok(m31_fixMigrationContent.includes('should_approve := TRUE;'), 'Students must be initialized with is_approved = TRUE');
+assert.ok(m31_fixMigrationContent.includes('should_approve := FALSE;'), 'Teachers must remain initialized with is_approved = FALSE');
+assert.ok(m31_fixMigrationContent.includes('UPDATE public.profiles'), 'Migration must retroactively update existing student profiles to is_approved = TRUE');
+assert.ok(m31_fixMigrationContent.includes("WHERE role = 'student'"), 'Retroactive update must target role = student');
+
+// 31.2 Access Rules Matrix & Approval Policy
+const { ROUTE_ACCESS: m31_ROUTE_ACCESS, evaluateAccess: m31_evalAccess, getRoleDashboardPath: m31_getRoleDashboardPath } = await import('../src/routes/accessRules.js');
+
+// Admin and Student must NOT require approval; Teacher MUST require approval
+assert.strictEqual(m31_ROUTE_ACCESS.ADMIN_ONLY.requireApproval, false, 'ADMIN_ONLY access rule must not require approval');
+assert.strictEqual(m31_ROUTE_ACCESS.STUDENT_ONLY.requireApproval, false, 'STUDENT_ONLY access rule must not require approval');
+assert.strictEqual(m31_ROUTE_ACCESS.TEACHER_ONLY.requireApproval, true, 'TEACHER_ONLY access rule must still require approval');
+
+// Scenario 1: Newly registered student with is_approved = false in old profile state -> evaluateAccess treats student as allowed
+const m31_studentAccessResult = m31_evalAccess({
+  allowedRoles: ['student'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: false },
+  role: 'student',
+  isApproved: false,
+});
+assert.strictEqual(m31_studentAccessResult.allowed, true, 'Students must have immediate dashboard access without approval check');
+assert.strictEqual(m31_getRoleDashboardPath({ role: 'student', isApproved: false }), '/student/dashboard', 'Student routes to /student/dashboard');
+
+// Scenario 2: Teacher with is_approved = false -> evaluateAccess redirects to teacher status
+const m31_pendingTeacherResult = m31_evalAccess({
+  allowedRoles: ['teacher'],
+  requireApproval: true,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: false },
+  role: 'teacher',
+  isApproved: false,
+});
+assert.strictEqual(m31_pendingTeacherResult.allowed, false, 'Pending teacher must not be allowed access');
+assert.strictEqual(m31_pendingTeacherResult.reason, 'pending_approval', 'Pending teacher must receive pending_approval reason');
+assert.strictEqual(m31_getRoleDashboardPath({ role: 'teacher', isApproved: false }), '/teacher/status', 'Pending teacher routes to /teacher/status');
+
+// Scenario 3: Admin with is_approved = false / true -> evaluateAccess immediately allows Admin Dashboard
+const m31_adminAccessResult = m31_evalAccess({
+  allowedRoles: ['admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'admin', is_approved: false },
+  role: 'admin',
+  isApproved: false,
+});
+assert.strictEqual(m31_adminAccessResult.allowed, true, 'Admin must have immediate dashboard access without approval check');
+assert.strictEqual(m31_getRoleDashboardPath({ role: 'admin', isApproved: false }), '/admin/dashboard', 'Admin routes to /admin/dashboard');
+
+// 31.3 RoleBasedRoute Approval Scoping
+const m31_rbrPath = path.join(srcDir, 'routes', 'RoleBasedRoute.jsx');
+const m31_rbrContent = fs.readFileSync(m31_rbrPath, 'utf8');
+assert.ok(m31_rbrContent.includes("role === 'teacher' && !isApproved"), 'RoleBasedRoute must scope approval requirement strictly to teachers');
+
+// 31.4 AuthContext Dynamic Approval Logic
+const m31_authContextPath = path.join(srcDir, 'context', 'AuthContext.jsx');
+const m31_authContextContent = fs.readFileSync(m31_authContextPath, 'utf8');
+assert.ok(
+  m31_authContextContent.includes("profile?.role === 'student' || profile?.role === 'admin'"),
+  'AuthContext must treat students and admins as approved by default'
+);
+
+// 31.5 AMOL Admin Provisioning Script & Configuration
+const m31_amolSqlPath = path.join(rootDir, '..', 'supabase', 'provision_admin_amol.sql');
+assert.ok(fs.existsSync(m31_amolSqlPath), 'supabase/provision_admin_amol.sql must exist');
+const m31_amolSqlContent = fs.readFileSync(m31_amolSqlPath, 'utf8');
+assert.ok(m31_amolSqlContent.includes('AMOL'), 'AMOL provisioning script must provision display name AMOL');
+assert.ok(m31_amolSqlContent.includes("role = 'admin'"), 'AMOL profile must be assigned role admin');
+assert.ok(m31_amolSqlContent.includes('is_approved = TRUE'), 'AMOL profile must have is_approved = TRUE');
+
+// Config and .env demo admin email
+const m31_configPath = path.join(srcDir, 'utils', 'config.js');
+const m31_configContent = fs.readFileSync(m31_configPath, 'utf8');
+assert.ok(m31_configContent.includes('demoAdminEmail'), 'config.js must export demoAdminEmail');
+const { config: m31_config } = await import('../src/utils/config.js');
+assert.ok(m31_config.demoAdminEmail, 'demoAdminEmail must have a valid configured string');
+
+// 31.6 Dashboard Preview Mode Architecture
+const m31_adminDashPath = path.join(srcDir, 'pages', 'dashboards', 'AdminDashboard.jsx');
+const m31_adminDashContent = fs.readFileSync(m31_adminDashPath, 'utf8');
+assert.ok(m31_adminDashContent.includes('useSearchParams'), 'AdminDashboard must use useSearchParams for preview navigation');
+assert.ok(m31_adminDashContent.includes('previewMode={true}'), 'AdminDashboard must mount dashboards with previewMode={true}');
+assert.ok(m31_adminDashContent.includes('dashboard-preview-card'), 'AdminDashboard must render dashboard preview card');
+assert.ok(m31_adminDashContent.includes('Preview Student Dashboard'), 'Preview option for Student must be available');
+assert.ok(m31_adminDashContent.includes('Preview Teacher Dashboard'), 'Preview option for Teacher must be available');
+
+// StudentDashboard preview props and banner
+const m31_studentDashContent = fs.readFileSync(path.join(srcDir, 'pages', 'dashboards', 'StudentDashboard.jsx'), 'utf8');
+assert.ok(m31_studentDashContent.includes('previewMode'), 'StudentDashboard must accept previewMode prop');
+assert.ok(m31_studentDashContent.includes('onExitPreview'), 'StudentDashboard must accept onExitPreview prop');
+assert.ok(m31_studentDashContent.includes('dashboard-preview-banner'), 'StudentDashboard must render preview banner when in preview mode');
+assert.ok(m31_studentDashContent.includes('dashboard-preview-banner__exit-btn'), 'StudentDashboard must provide exit preview button');
+
+// TeacherDashboard preview props and banner
+const m31_teacherDashContent = fs.readFileSync(path.join(srcDir, 'pages', 'dashboards', 'TeacherDashboard.jsx'), 'utf8');
+assert.ok(m31_teacherDashContent.includes('previewMode'), 'TeacherDashboard must accept previewMode prop');
+assert.ok(m31_teacherDashContent.includes('onExitPreview'), 'TeacherDashboard must accept onExitPreview prop');
+assert.ok(m31_teacherDashContent.includes('dashboard-preview-banner'), 'TeacherDashboard must render preview banner when in preview mode');
+assert.ok(m31_teacherDashContent.includes('dashboard-preview-banner__exit-btn'), 'TeacherDashboard must provide exit preview button');
+
+// CSS styling for Preview Mode
+const m31_dashCssContent = fs.readFileSync(path.join(srcDir, 'styles', 'dashboard.css'), 'utf8');
+assert.ok(m31_dashCssContent.includes('.dashboard-preview-card'), 'CSS class .dashboard-preview-card must exist');
+assert.ok(m31_dashCssContent.includes('.dashboard-preview-banner'), 'CSS class .dashboard-preview-banner must exist');
+assert.ok(m31_dashCssContent.includes('.dashboard-preview-btn'), 'CSS class .dashboard-preview-btn must exist');
+assert.ok(m31_dashCssContent.includes('.dashboard-preview-banner__exit-btn'), 'CSS class .dashboard-preview-banner__exit-btn must exist');
+
+// 31.7 Security Boundaries & Non-Admin Isolation
+const m31_appRoutesPath = path.join(srcDir, 'routes', 'AppRoutes.jsx');
+const m31_appRoutesContent = fs.readFileSync(m31_appRoutesPath, 'utf8');
+assert.ok(
+  m31_appRoutesContent.includes('path={ROUTES.ADMIN_DASHBOARD}'),
+  'ROUTES.ADMIN_DASHBOARD must be registered'
+);
+assert.ok(
+  m31_appRoutesContent.includes('allowedRoles={[ROLES.ADMIN]}'),
+  'Admin Dashboard must only allow ROLES.ADMIN'
+);
+
+// Verify student trying to access admin dashboard (and preview mode) is rejected
+const m31_studentOnAdminAccess = m31_evalAccess({
+  allowedRoles: ['admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'student', is_approved: true },
+  role: 'student',
+  isApproved: true,
+});
+assert.strictEqual(m31_studentOnAdminAccess.allowed, false, 'Students must be barred from Admin Dashboard and preview mode');
+assert.strictEqual(m31_studentOnAdminAccess.reason, 'forbidden', 'Student accessing admin dashboard must receive forbidden');
+assert.strictEqual(m31_getRoleDashboardPath({ role: 'student', isApproved: true }), '/student/dashboard', 'Student redirected to student dashboard');
+
+// Verify teacher trying to access admin dashboard is rejected
+const m31_teacherOnAdminAccess = m31_evalAccess({
+  allowedRoles: ['admin'],
+  requireApproval: false,
+  isAuthenticated: true,
+  profile: { role: 'teacher', is_approved: true },
+  role: 'teacher',
+  isApproved: true,
+});
+assert.strictEqual(m31_teacherOnAdminAccess.allowed, false, 'Teachers must be barred from Admin Dashboard and preview mode');
+assert.strictEqual(m31_teacherOnAdminAccess.reason, 'forbidden', 'Teacher accessing admin dashboard must receive forbidden');
+assert.strictEqual(m31_getRoleDashboardPath({ role: 'teacher', isApproved: true }), '/teacher/dashboard', 'Approved teacher redirected to teacher dashboard');
+
+console.log('✔ Milestone 9.7 (Approval Fix, AMOL & Preview Mode): All 28 verification checks passed successfully');
+console.log('--- All AttendAI Verification Tests Passed! ---');
