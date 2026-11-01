@@ -5,15 +5,16 @@
 -- Security Rules & Architecture:
 -- 1. public.teacher_registration_requests table referencing auth.users(id).
 -- 2. Status constraint: ('pending', 'approved', 'rejected') with default 'pending'.
--- 3. Unique partial index to strictly prevent duplicate pending requests per user.
--- 4. RLS Policies:
+-- 3. rejection_reason column (nullable TEXT) for recording rejection justifications.
+-- 4. Unique partial index to strictly prevent duplicate pending requests per user.
+-- 5. RLS Policies:
 --    - Authenticated users can view ONLY their own requests (auth.uid() = user_id).
 --    - Authenticated users can INSERT only for their own user_id with status = 'pending'.
 --    - Authenticated users CANNOT UPDATE or DELETE requests (revoked at grant & policy level).
 --    - Anonymous users have zero access (REVOKE ALL).
--- 5. Anti-Tampering Trigger:
+-- 6. Anti-Tampering Trigger:
 --    - Rejects any client attempt to modify requests or elevate status to 'approved'.
--- 6. Trigger handle_new_user() enhancement:
+-- 7. Trigger handle_new_user() enhancement:
 --    - Profiles ALWAYS default to 'student' and is_approved = FALSE.
 --    - If raw_user_meta_data->>'requested_role' = 'teacher', automatically creates
 --      a pending request in teacher_registration_requests.
@@ -24,9 +25,14 @@ CREATE TABLE IF NOT EXISTS public.teacher_registration_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW())
 );
+
+-- Idempotency repair: Ensure rejection_reason exists if table was previously created
+ALTER TABLE public.teacher_registration_requests 
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL;
 
 -- Index for fast user queries
 CREATE INDEX IF NOT EXISTS idx_teacher_requests_user ON public.teacher_registration_requests(user_id);
@@ -92,7 +98,7 @@ ALTER TABLE public.teacher_registration_requests ENABLE ROW LEVEL SECURITY;
 -- Revoke all permissions from anon
 REVOKE ALL ON TABLE public.teacher_registration_requests FROM anon;
 
--- Policy 1: Authenticated users can view ONLY their own requests
+-- Policy 1: Authenticated users can view ONLY their own requests (and rejection reason)
 DROP POLICY IF EXISTS "Users can view own teacher requests" ON public.teacher_registration_requests;
 CREATE POLICY "Users can view own teacher requests"
     ON public.teacher_registration_requests
@@ -177,7 +183,7 @@ BEGIN
             TIMEZONE('utc'::TEXT, NOW()),
             TIMEZONE('utc'::TEXT, NOW())
         )
-        ON CONFLICT DO NOTHING;
+        ON CONFLICT (user_id) WHERE status = 'pending' DO NOTHING;
     END IF;
 
     RETURN NEW;

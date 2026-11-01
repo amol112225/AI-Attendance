@@ -3,15 +3,16 @@
  * Milestone 8.4: AttendAI Login, AuthContext & Session Management
  *
  * Implements accessible, validated user login powered by authService.loginUser().
- * Updates AuthContext upon successful sign in and redirects to the homepage.
+ * Updates AuthContext upon successful sign in and redirects to the role dashboard.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { ErrorMessage } from '../components/common/ErrorMessage';
+import { LoadingIndicator } from '../components/common/LoadingIndicator';
 import { loginUser, formatAuthError } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes/routes';
@@ -23,7 +24,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, user, setAuthSession, logout } = useAuth();
+  const {
+    isAuthenticated,
+    user,
+    profile,
+    isApproved,
+    loading,
+    profileLoading,
+    setAuthSession,
+    logout,
+  } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -34,6 +44,28 @@ export function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reactive Redirection:
+  // When an authenticated user's session and profile are resolved, direct them immediately to their dashboard
+  useEffect(() => {
+    if (isAuthenticated && !loading && !profileLoading) {
+      const activeRole = profile?.role || (user?.user_metadata?.requested_role !== 'teacher' ? 'student' : null);
+      if (activeRole) {
+        const from = location.state?.from?.pathname;
+        const destination =
+          from &&
+          from !== ROUTES.LOGIN &&
+          from !== ROUTES.REGISTER &&
+          from !== ROUTES.TEACHER_LOGIN &&
+          from !== ROUTES.TEACHER_REGISTER &&
+          from !== ROUTES.ROOT &&
+          from !== ROUTES.DASHBOARD
+            ? from
+            : getRoleDashboardPath({ role: activeRole, isApproved });
+        navigate(destination, { replace: true });
+      }
+    }
+  }, [isAuthenticated, loading, profileLoading, profile, isApproved, user, location.state, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -101,6 +133,7 @@ export function LoginPage() {
 
       if (data?.session) {
         const authState = await setAuthSession(data.session);
+        const resolvedProfile = authState?.profile;
         const from = location.state?.from?.pathname;
         let destination;
         if (
@@ -114,9 +147,11 @@ export function LoginPage() {
         ) {
           destination = from;
         } else {
+          const userRole = resolvedProfile?.role || 'student';
+          const approvedStatus = userRole === 'teacher' ? Boolean(resolvedProfile?.is_approved) : true;
           destination = getRoleDashboardPath({
-            role: authState?.profile?.role,
-            isApproved: Boolean(authState?.profile?.is_approved),
+            role: userRole,
+            isApproved: approvedStatus,
           });
         }
         navigate(destination, { replace: true });
@@ -130,6 +165,19 @@ export function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  // While authenticating and resolving user profile, display an accessible loading indicator
+  if (isAuthenticated && (loading || profileLoading)) {
+    return (
+      <div className="login-page">
+        <Container size="sm">
+          <div className="login-card" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+            <LoadingIndicator centered size="lg" message="Directing to your dashboard..." />
+          </div>
+        </Container>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
@@ -150,7 +198,14 @@ export function LoginPage() {
                   variant="primary"
                   size="md"
                   type="button"
-                  onClick={() => navigate(ROUTES.DASHBOARD)}
+                  onClick={() =>
+                    navigate(
+                      getRoleDashboardPath({
+                        role: profile?.role || 'student',
+                        isApproved,
+                      })
+                    )
+                  }
                 >
                   Go to Dashboard
                 </Button>
@@ -213,11 +268,11 @@ export function LoginPage() {
                       disabled={isSubmitting}
                       className={`login-input ${fieldErrors.email ? 'login-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.email)}
-                      aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
+                      aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                     />
                   </div>
                   {fieldErrors.email && (
-                    <span id="login-email-error" className="login-field-error" role="alert">
+                    <span id="email-error" className="login-field-error" role="alert">
                       {fieldErrors.email}
                     </span>
                   )}
@@ -225,7 +280,7 @@ export function LoginPage() {
 
                 {/* Password */}
                 <div className="login-field">
-                  <div className="login-label-row">
+                  <div className="login-field-header">
                     <label htmlFor="login-password" className="login-label">
                       Password
                     </label>
@@ -246,17 +301,17 @@ export function LoginPage() {
                       disabled={isSubmitting}
                       className={`login-input ${fieldErrors.password ? 'login-input--error' : ''}`}
                       aria-invalid={Boolean(fieldErrors.password)}
-                      aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
+                      aria-describedby={fieldErrors.password ? 'password-error' : undefined}
                     />
                   </div>
                   {fieldErrors.password && (
-                    <span id="login-password-error" className="login-field-error" role="alert">
+                    <span id="password-error" className="login-field-error" role="alert">
                       {fieldErrors.password}
                     </span>
                   )}
                 </div>
 
-                {/* Submit Button */}
+                {/* Submit Action */}
                 <div className="login-actions">
                   <Button
                     variant="primary"
@@ -272,16 +327,16 @@ export function LoginPage() {
                 </div>
               </form>
 
-              {/* Registration and Teacher Login Links */}
+              {/* Navigation Links */}
               <footer className="login-footer">
                 <p className="login-footer-text">
-                  Don't have an account yet?{' '}
+                  Don't have an account?{' '}
                   <Link to={ROUTES.REGISTER} className="login-footer-link">
-                    Create account
+                    Sign up
                   </Link>
                 </p>
-                <p className="login-footer-text">
-                  Educator or faculty member?{' '}
+                <p className="login-footer-text login-footer-text--subtle">
+                  Are you a faculty member?{' '}
                   <Link to={ROUTES.TEACHER_LOGIN} className="login-footer-link">
                     Teacher Sign In
                   </Link>
@@ -296,4 +351,3 @@ export function LoginPage() {
 }
 
 export default LoginPage;
-

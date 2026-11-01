@@ -8,7 +8,7 @@
  * - Submits teacher application via registerTeacher() without auto-assigning elevated privileges.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -31,7 +31,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function TeacherRegisterPage() {
   const navigate = useNavigate();
-  const { setAuthSession } = useAuth();
+  const { user, role, isApproved, loading, profileLoading, setAuthSession } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -51,6 +51,21 @@ export function TeacherRegisterPage() {
   // - 'active_session': Direct session created & approval request submitted
   const [successState, setSuccessState] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
+
+  // If already authenticated and not viewing immediate registration success, redirect to dashboard
+  useEffect(() => {
+    if (!loading && !profileLoading && user && !successState) {
+      if (role === 'teacher') {
+        if (isApproved) {
+          navigate(ROUTES.TEACHER_DASHBOARD, { replace: true });
+        } else {
+          navigate(ROUTES.TEACHER_STATUS, { replace: true });
+        }
+      } else {
+        navigate(ROUTES.STUDENT_DASHBOARD, { replace: true });
+      }
+    }
+  }, [user, role, isApproved, loading, profileLoading, successState, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

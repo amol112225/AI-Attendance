@@ -7,7 +7,7 @@
  * Strictly enforces Option B: Student role by default, no user-side teacher selection.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, CheckCircle2, ShieldCheck, ArrowRight, GraduationCap, BookOpen } from 'lucide-react';
 import { Container } from '../components/common/Container';
@@ -24,7 +24,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { setAuthSession } = useAuth();
+  const { user, role, isApproved, loading, profileLoading, setAuthSession } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -44,6 +44,21 @@ export function RegisterPage() {
   // - 'active_session': Scenario B (Instant account registration)
   const [successState, setSuccessState] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
+
+  // If already authenticated and not viewing immediate registration success, redirect to dashboard
+  useEffect(() => {
+    if (!loading && !profileLoading && user && !successState) {
+      if (role === 'teacher') {
+        if (isApproved) {
+          navigate(ROUTES.TEACHER_DASHBOARD, { replace: true });
+        } else {
+          navigate(ROUTES.TEACHER_STATUS, { replace: true });
+        }
+      } else {
+        navigate(ROUTES.STUDENT_DASHBOARD, { replace: true });
+      }
+    }
+  }, [user, role, isApproved, loading, profileLoading, successState, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -169,6 +184,14 @@ export function RegisterPage() {
                   variant="primary"
                   size="md"
                   type="button"
+                  onClick={() => navigate(ROUTES.STUDENT_DASHBOARD)}
+                >
+                  Go to Student Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="md"
+                  type="button"
                   onClick={() => navigate(ROUTES.ROOT)}
                 >
                   Return to Homepage
@@ -186,7 +209,7 @@ export function RegisterPage() {
               <h1 className="register-success-title">Account Created!</h1>
               <p className="register-success-description">
                 Your AttendAI account has been created successfully with the Student role.
-                Authentication and dashboard views will be available in upcoming milestones.
+                You can now proceed directly to your Student Dashboard.
               </p>
               <div className="register-success-actions">
                 <Button

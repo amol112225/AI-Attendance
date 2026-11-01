@@ -10,12 +10,13 @@
  * - Prevents unauthorized session access when role verification fails.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { BookOpen, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Container } from '../components/common/Container';
 import { Button } from '../components/common/Button';
 import { ErrorMessage } from '../components/common/ErrorMessage';
+import { LoadingIndicator } from '../components/common/LoadingIndicator';
 import {
   authenticateTeacher,
   TEACHER_LOGIN_OUTCOMES,
@@ -30,7 +31,18 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function TeacherLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, user, isApproved, role, teacherRequest, setAuthSession, logout } = useAuth();
+  const {
+    isAuthenticated,
+    user,
+    profile,
+    isApproved,
+    role,
+    teacherRequest,
+    loading,
+    profileLoading,
+    setAuthSession,
+    logout,
+  } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -39,8 +51,20 @@ export function TeacherLoginPage() {
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
-  const [loginOutcome, setLoginOutcome] = useState(null);
+  const [_loginOutcome, setLoginOutcome] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reactive Redirection: Direct authenticated users directly to their designated dashboard/status
+  useEffect(() => {
+    if (isAuthenticated && !loading && !profileLoading && profile) {
+      if (role === 'teacher') {
+        const dest = isApproved ? ROUTES.TEACHER_DASHBOARD : ROUTES.TEACHER_STATUS;
+        navigate(dest, { replace: true });
+      } else if (role === 'student') {
+        navigate(ROUTES.STUDENT_DASHBOARD, { replace: true });
+      }
+    }
+  }, [isAuthenticated, loading, profileLoading, profile, role, isApproved, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -133,6 +157,19 @@ export function TeacherLoginPage() {
     }
   };
 
+  // While authenticating and resolving user profile, display an accessible loading indicator
+  if (isAuthenticated && (loading || profileLoading)) {
+    return (
+      <div className="login-page">
+        <Container size="sm">
+          <div className="login-card" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+            <LoadingIndicator centered size="lg" message="Directing to faculty portal..." />
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
   return (
     <div className="login-page">
       <Container size="sm">
@@ -160,7 +197,16 @@ export function TeacherLoginPage() {
                 ) : null}
               </p>
               <div className="login-authenticated-actions">
-                {(isApproved || teacherRequest) && (
+                {role === 'teacher' && isApproved ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    type="button"
+                    onClick={() => navigate(ROUTES.TEACHER_DASHBOARD)}
+                  >
+                    Go to Teacher Dashboard
+                  </Button>
+                ) : (role === 'teacher' && !isApproved) || teacherRequest?.status === 'pending' ? (
                   <Button
                     variant="primary"
                     size="md"
@@ -169,9 +215,18 @@ export function TeacherLoginPage() {
                   >
                     View Teacher Status
                   </Button>
-                )}
+                ) : role === 'student' ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    type="button"
+                    onClick={() => navigate(ROUTES.STUDENT_DASHBOARD)}
+                  >
+                    Go to Student Dashboard
+                  </Button>
+                ) : null}
                 <Button
-                  variant={isApproved || teacherRequest ? 'outline' : 'primary'}
+                  variant="outline"
                   size="md"
                   type="button"
                   onClick={() => navigate(ROUTES.ROOT)}
@@ -204,39 +259,9 @@ export function TeacherLoginPage() {
               {generalError && (
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                   <ErrorMessage
-                    title={
-                      loginOutcome === TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE
-                        ? 'Student Account Detected'
-                        : loginOutcome === TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER
-                        ? 'Teacher Application Not Approved'
-                        : loginOutcome === TEACHER_LOGIN_OUTCOMES.ADMIN_ROLE
-                        ? 'Administrator Portal Required'
-                        : 'Sign in failed'
-                    }
+                    title="Sign in failed"
                     message={generalError}
                   />
-                  {loginOutcome === TEACHER_LOGIN_OUTCOMES.STUDENT_ROLE && (
-                    <div style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}>
-                      <Link
-                        to={ROUTES.LOGIN}
-                        className="login-footer-link"
-                        style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}
-                      >
-                        Go to Student Sign In &rarr;
-                      </Link>
-                    </div>
-                  )}
-                  {loginOutcome === TEACHER_LOGIN_OUTCOMES.REJECTED_TEACHER && (
-                    <div style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}>
-                      <Link
-                        to={ROUTES.LOGIN}
-                        className="login-footer-link"
-                        style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}
-                      >
-                        Continue with Student Sign In &rarr;
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -263,11 +288,7 @@ export function TeacherLoginPage() {
                     />
                   </div>
                   {fieldErrors.email && (
-                    <span
-                      id="teacher-login-email-error"
-                      className="login-field-error"
-                      role="alert"
-                    >
+                    <span id="teacher-login-email-error" className="login-field-error" role="alert">
                       {fieldErrors.email}
                     </span>
                   )}
@@ -275,7 +296,7 @@ export function TeacherLoginPage() {
 
                 {/* Password */}
                 <div className="login-field">
-                  <div className="login-label-row">
+                  <div className="login-field-header">
                     <label htmlFor="teacher-login-password" className="login-label">
                       Password
                     </label>
@@ -300,16 +321,13 @@ export function TeacherLoginPage() {
                     />
                   </div>
                   {fieldErrors.password && (
-                    <span
-                      id="teacher-login-password-error"
-                      className="login-field-error"
-                      role="alert"
-                    >
+                    <span id="teacher-login-password-error" className="login-field-error" role="alert">
                       {fieldErrors.password}
                     </span>
                   )}
                 </div>
 
+                {/* Submit Action */}
                 <div className="login-actions">
                   <Button
                     variant="primary"
@@ -325,15 +343,16 @@ export function TeacherLoginPage() {
                 </div>
               </form>
 
+              {/* Navigation Links */}
               <footer className="login-footer">
                 <p className="login-footer-text">
                   New faculty member?{' '}
                   <Link to={ROUTES.TEACHER_REGISTER} className="login-footer-link">
-                    Apply for Teacher Access
+                    Register as Teacher
                   </Link>
                 </p>
-                <p className="login-footer-text">
-                  Student account?{' '}
+                <p className="login-footer-text login-footer-text--subtle">
+                  Looking for student sign in?{' '}
                   <Link to={ROUTES.LOGIN} className="login-footer-link">
                     Student Sign In
                   </Link>

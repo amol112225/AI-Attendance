@@ -6,6 +6,8 @@
 -- 2. Do NOT allow users to select Admin role in registration metadata.
 -- 3. Do NOT expose Supabase service-role keys in frontend code.
 -- 4. Do NOT store hardcoded passwords in version control.
+-- 5. Email confirmation is a separate authentication decision and must be performed
+--    via the official Supabase Authentication workflow, NOT through profile scripts.
 --
 -- SETUP INSTRUCTIONS FOR SUPABASE ADMINISTRATOR:
 --
@@ -14,11 +16,11 @@
 --   Enter:
 --     Email: admin.amol@attendai.edu (or your configured VITE_DEMO_ADMIN_EMAIL)
 --     Password: <Choose a strong temporary development password>
---     Check "Auto Confirm User?" -> Click "Create User"
+--     Confirm the user email according to your project authentication policies.
 --
 -- Step 2 (Supabase SQL Editor):
---   Run the block below in the SQL Editor to elevate the user's profile to
---   Administrator role ('admin') with verified status (is_approved = TRUE).
+--   Run the block below in the SQL Editor to provision the user's profile with
+--   Administrator role ('admin'::public.user_role) and verified status (is_approved = TRUE).
 -- ==============================================================================
 
 DO $$
@@ -46,22 +48,16 @@ BEGIN
     VALUES (
         target_user_id,
         'AMOL',
-        'admin'::user_role,
+        'admin'::public.user_role,
         TRUE,
         TIMEZONE('utc'::TEXT, NOW()),
         TIMEZONE('utc'::TEXT, NOW())
     )
     ON CONFLICT (id) DO UPDATE SET
         full_name = 'AMOL',
-        role = 'admin'::user_role,
+        role = 'admin'::public.user_role,
         is_approved = TRUE,
         updated_at = TIMEZONE('utc'::TEXT, NOW());
 
-    -- Ensure email confirmation flag is set
-    UPDATE auth.users
-    SET email_confirmed_at = COALESCE(email_confirmed_at, NOW())
-    WHERE id = target_user_id;
-
     RAISE NOTICE 'SUCCESS: User "%" (UUID: %) has been provisioned as Administrator "AMOL".', admin_email, target_user_id;
 END $$;
-
