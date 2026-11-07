@@ -29,6 +29,7 @@ export function RoleDashboardRedirect() {
     isApproved,
     profileLoading,
     profileError,
+    profileErrorType,
   } = useAuth();
   const location = useLocation();
 
@@ -53,7 +54,12 @@ export function RoleDashboardRedirect() {
     return (
       <Navigate
         to={ROUTES.UNAUTHORIZED}
-        state={{ reason: 'error', from: location }}
+        state={{
+          reason: 'error',
+          errorType: profileErrorType || 'QUERY_ERROR',
+          errorMessage: profileError?.message || null,
+          from: location,
+        }}
         replace
       />
     );
@@ -64,7 +70,11 @@ export function RoleDashboardRedirect() {
     return (
       <Navigate
         to={ROUTES.UNAUTHORIZED}
-        state={{ reason: 'no_profile', from: location }}
+        state={{
+          reason: 'no_profile',
+          errorType: 'RECORD_NOT_FOUND',
+          from: location,
+        }}
         replace
       />
     );

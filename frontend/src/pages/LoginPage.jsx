@@ -48,8 +48,8 @@ export function LoginPage() {
   // Reactive Redirection:
   // When an authenticated user's session and profile are resolved, direct them immediately to their dashboard
   useEffect(() => {
-    if (isAuthenticated && !loading && !profileLoading) {
-      const activeRole = profile?.role || (user?.user_metadata?.requested_role !== 'teacher' ? 'student' : null);
+    if (isAuthenticated && !loading && !profileLoading && profile) {
+      const activeRole = profile.role;
       if (activeRole) {
         const from = location.state?.from?.pathname;
         const destination =
@@ -65,7 +65,7 @@ export function LoginPage() {
         navigate(destination, { replace: true });
       }
     }
-  }, [isAuthenticated, loading, profileLoading, profile, isApproved, user, location.state, navigate]);
+  }, [isAuthenticated, loading, profileLoading, profile, isApproved, location.state, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -134,9 +134,16 @@ export function LoginPage() {
       if (data?.session) {
         const authState = await setAuthSession(data.session);
         const resolvedProfile = authState?.profile;
-        const from = location.state?.from?.pathname;
-        let destination;
-        if (
+        const currentUser = data.session.user;
+        const metaRole = currentUser?.user_metadata?.role;
+        const metaRequestedRole = currentUser?.user_metadata?.requested_role;
+
+        const userRole =
+          resolvedProfile?.role ||
+          (metaRequestedRole === 'teacher' ? 'teacher' : (metaRole || 'student'));
+        const approvedStatus =
+          userRole === 'teacher' ? Boolean(resolvedProfile?.is_approved) : true;
+        const destination =
           from &&
           from !== ROUTES.LOGIN &&
           from !== ROUTES.REGISTER &&
@@ -144,16 +151,11 @@ export function LoginPage() {
           from !== ROUTES.TEACHER_REGISTER &&
           from !== ROUTES.ROOT &&
           from !== ROUTES.DASHBOARD
-        ) {
-          destination = from;
-        } else {
-          const userRole = resolvedProfile?.role || 'student';
-          const approvedStatus = userRole === 'teacher' ? Boolean(resolvedProfile?.is_approved) : true;
-          destination = getRoleDashboardPath({
-            role: userRole,
-            isApproved: approvedStatus,
-          });
-        }
+            ? from
+            : getRoleDashboardPath({
+                role: userRole,
+                isApproved: approvedStatus,
+              });
         navigate(destination, { replace: true });
       } else {
         // Fallback for safety

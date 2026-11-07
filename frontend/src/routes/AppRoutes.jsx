@@ -29,6 +29,11 @@ const StudentDashboard = lazy(() => import('../pages/dashboards/StudentDashboard
 const TeacherDashboard = lazy(() => import('../pages/dashboards/TeacherDashboard'));
 const AdminDashboard = lazy(() => import('../pages/dashboards/AdminDashboard'));
 
+// Milestone 9.2: Student Portal Sub-pages
+const StudentAttendancePage = lazy(() => import('../pages/student/StudentAttendancePage'));
+const StudentSubjectsPage = lazy(() => import('../pages/student/StudentSubjectsPage'));
+const StudentProfilePage = lazy(() => import('../pages/student/StudentProfilePage'));
+
 // Milestone 9.5: Centralized Role Dashboard Redirection
 const RoleDashboardRedirect = lazy(() => import('./RoleDashboardRedirect'));
 
@@ -86,7 +91,7 @@ export function AppRoutes() {
           path={ROUTES.STUDENT_ATTENDANCE}
           element={
             <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
-              <StudentDashboard />
+              <StudentAttendancePage />
             </RoleBasedRoute>
           }
         />
@@ -94,7 +99,7 @@ export function AppRoutes() {
           path={ROUTES.STUDENT_SUBJECTS}
           element={
             <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
-              <StudentDashboard />
+              <StudentSubjectsPage />
             </RoleBasedRoute>
           }
         />
@@ -102,7 +107,7 @@ export function AppRoutes() {
           path={ROUTES.STUDENT_PROFILE}
           element={
             <RoleBasedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} requireApproval={false}>
-              <StudentDashboard />
+              <StudentProfilePage />
             </RoleBasedRoute>
           }
         />

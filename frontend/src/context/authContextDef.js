@@ -14,6 +14,7 @@ export const AuthContext = createContext({
   loading: true,
   profileLoading: false,
   profileError: null,
+  profileErrorType: null,
   teacherRequest: null,
   teacherRequestLoading: false,
   isAuthenticated: false,

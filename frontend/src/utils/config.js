@@ -24,6 +24,9 @@ export const config = {
   // Demo Admin Configuration (for testing/reference)
   demoAdminEmail: (metaEnv.VITE_DEMO_ADMIN_EMAIL || 'admin.amol@attendai.edu').trim(),
 
+  // Demo Faculty/Teacher Configuration (for testing/reference)
+  demoTeacherEmail: (metaEnv.VITE_DEMO_TEACHER_EMAIL || 'kendreamol77@gmail.com').trim(),
+
   // Environment mode
   isDev: Boolean(metaEnv.DEV),
   isProd: Boolean(metaEnv.PROD),

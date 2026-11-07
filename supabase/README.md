@@ -1,10 +1,10 @@
-# AttendAI — Database Profiles, Roles & Row Level Security (RLS)
+# AttendAI — Database Migrations, Security & Operational Architecture
 
-This document explains the architecture, security safeguards, and manual execution instructions for the `profiles` table, automated trigger, and RLS policies defined in `supabase/migrations/20261030000000_profiles_roles_rls.sql`.
+This document details the database migrations, Row Level Security (RLS) policies, administrative functions, verification suites, and operational procedures for AttendAI.
 
 ---
 
-## 1. Schema Overview
+## 1. Schema Overview & Administrative Approval Policy
 
 The `public.profiles` table references Supabase's `auth.users(id)` and manages user identities, system roles, and administrative approval:
 
@@ -17,166 +17,101 @@ The `public.profiles` table references Supabase's `auth.users(id)` and manages u
 | `created_at` | `timestamptz` | `NOW()` | Record creation timestamp. |
 | `updated_at` | `timestamptz` | `NOW()` | Automatically refreshed on update via trigger. |
 
----
-
-## 2. Automated Profile Creation Trigger
-
-When a user signs up via `supabase.auth.signUp()`, an event occurs on `auth.users`:
-
-1. The `public.handle_new_user()` trigger function executes automatically with `SECURITY DEFINER` and `SET search_path = public, pg_temp`.
-2. It extracts `full_name` from `raw_user_meta_data->>'full_name'`. If missing or whitespace, it safely falls back to the user's email prefix.
-3. It unconditionally sets `role = 'student'` and `is_approved = false`. **User-supplied metadata cannot influence role or approval.**
-4. If the trigger fails for any reason, the transaction is rolled back, preventing orphaned authentication records.
+### Administrative Approval Security Model
+In accordance with our **Administrative Approval** security model, Teacher privileges and elevated roles are never granted directly from client metadata:
+1. Students who register publicly are created with `role = 'student'` and automatically approved (`is_approved = true`).
+2. Teachers who register receive `role = 'teacher'` with `is_approved = false` and a pending entry in `teacher_registration_requests`.
+3. Unverified or ambiguous registrations are quarantined with `is_approved = false`.
+4. Administrator accounts can never be created through public registration; they require explicit provisioning.
 
 ---
 
-## 3. Row Level Security (RLS) Policies
+## 2. Migration History & Architecture
 
-Row Level Security is enabled on `public.profiles`:
+The database migrations in `supabase/migrations/` track the architectural evolution of AttendAI:
 
-1. **Read Access (`SELECT`)**: Authenticated users can only read their own profile row (`auth.uid() = id`).
-2. **Update Access (`UPDATE`)**:
-   - Authenticated users can update their own row, but only the `full_name` column (`GRANT UPDATE(full_name)`).
-   - The `trigger_prevent_profile_privilege_escalation` trigger raises an immediate PostgreSQL exception if any user session attempts to alter `role`, `is_approved`, `id`, or `created_at`.
-3. **Insert Access (`INSERT`)**: No INSERT policy is granted to `authenticated` or `anon`. Profiles can **only** be created by the trusted `on_auth_user_created` trigger.
-4. **Delete Access (`DELETE`)**: No DELETE policy is granted to users. Deletions cascade when an account is removed from `auth.users`.
-5. **Anonymous Access (`anon`)**: All privileges revoked.
-
----
-
-## 4. How to Apply the Migrations
-
-### Option A: Using the Supabase Dashboard SQL Editor (Recommended for Cloud Projects)
-1. Log in to the [Supabase Dashboard](https://supabase.com/dashboard).
-2. Select your AttendAI project (`mcxrdvsejyragcjufhlx`).
-3. Click on the **SQL Editor** tab in the left navigation sidebar.
-4. If you have not yet applied the initial migration, run:
-   [`supabase/migrations/20261030000000_profiles_roles_rls.sql`](./migrations/20261030000000_profiles_roles_rls.sql)
-5. To apply the non-recursive RLS policy update and privilege escalation trigger fix, run:
-   [`supabase/migrations/20261030010000_fix_profile_update_rls.sql`](./migrations/20261030010000_fix_profile_update_rls.sql)
-6. To apply the Teacher Registration Requests table, constraints, and RLS policies (Milestone 8.7), run:
-   [`supabase/migrations/20261030020000_teacher_registration_requests.sql`](./migrations/20261030020000_teacher_registration_requests.sql)
-7. Ensure the message states `Success. No rows returned`.
-
-### Option B: Using the Supabase CLI (Local Development)
-```bash
-supabase db push
-```
+| Migration File | Description |
+|---|---|
+| `20261030000000_profiles_roles_rls.sql` | Establishes `public.user_role` ENUM (`student`, `teacher`, `admin`), `public.profiles` table, automated profile creation trigger on `auth.users`, and base RLS policies. |
+| `20261030010000_fix_profile_update_rls.sql` | Replaces recursive RLS update policy with non-recursive check (`auth.uid() = id`), tightens column grants, and introduces privilege escalation protection trigger. |
+| `20261030020000_teacher_registration_requests.sql` | Introduces `public.teacher_registration_requests` table, status constraints (`pending`, `approved`, `rejected`), `rejection_reason` column, partial unique index, and request anti-tampering trigger. |
+| `20261031000000_fix_student_approval_and_admin_role.sql` | Implements auto-approval for registered students (`is_approved = true`), administrative approval functions (`admin_approve_teacher`, `admin_reject_teacher`), and initial backfill. |
+| `20261101000000_finalize_teacher_approval_and_security.sql` | **Final Security Forward Migration**: Corrects triggers to `SECURITY INVOKER`, hardens caller checks on admin functions, validates target status (rejects modifying admins, approved teachers, or active students), validates pending request uniqueness, revokes client insert on requests, executes audited reconciled backfill, and signals schema reload (`NOTIFY pgrst, 'reload schema'`). |
 
 ---
 
-## 5. Security Test Suite
+## 3. Migration Execution Strategies
 
-We have provided a comprehensive SQL security verification suite in [`supabase/tests/security_verification.sql`](./tests/security_verification.sql).
-Run this script in the Supabase SQL Editor to test:
-- Schema and constraint validation
-- RLS policy structure
-- Trigger execution on user creation
-- Role escalation blocking
-- Self-approval blocking
-- Permitted name updates
+### Strategy A: Fresh Database (New Project or Staging Environment)
+When setting up a completely new Supabase instance where application tables do not exist yet:
+
+1. **Step 1 (Pre-Migration Audit)**:
+   Run [`supabase/tests/pre_migration_audit.sql`](./tests/pre_migration_audit.sql) in Supabase SQL Editor.
+   *Confirms a clean slate without table or constraint errors.*
+2. **Step 2 (Apply Migrations in Sequential Order)**:
+   In the Supabase SQL Editor (or via `supabase db push`), execute each file in chronological sequence:
+   - `supabase/migrations/20261030000000_profiles_roles_rls.sql`
+   - `supabase/migrations/20261030010000_fix_profile_update_rls.sql`
+   - `supabase/migrations/20261030020000_teacher_registration_requests.sql`
+   - `supabase/migrations/20261031000000_fix_student_approval_and_admin_role.sql`
+   - `supabase/migrations/20261101000000_finalize_teacher_approval_and_security.sql`
+3. **Step 3 (Post-Migration Verification)**:
+   Run [`supabase/tests/post_migration_verification.sql`](./tests/post_migration_verification.sql).
+   *All 28 automated checks must report status `PASS`.*
+4. **Step 4 (Admin Provisioning)**:
+   Follow the instructions in [`supabase/provision_admin_amol.sql`](./provision_admin_amol.sql) to provision the verified administrator.
 
 ---
 
-## 5. How to Verify the Schema and RLS Policies
+### Strategy B: Existing Database (Upgrading an Instance with Migrations 1–4 Already Applied)
+When upgrading an existing database where Migrations 1–4 are already in place:
 
-Run this verification query in the Supabase SQL Editor:
+1. **Step 1 (Pre-Migration Audit & Anomaly Detection)**:
+   Run [`supabase/tests/pre_migration_audit.sql`](./tests/pre_migration_audit.sql).
+   *Review Query 2 for suspicious metadata claims, and Query 7 for any existing account anomalies.*
+2. **Step 2 (Apply Forward Migration 5)**:
+   Run [`supabase/migrations/20261101000000_finalize_teacher_approval_and_security.sql`](./migrations/20261101000000_finalize_teacher_approval_and_security.sql).
+   *Migration 5 is idempotent; it replaces trigger functions, hardens RLS policies, locks admin functions, backfills missing accounts without altering existing records, and reloads the PostgREST schema cache.*
+3. **Step 3 (Post-Migration Verification)**:
+   Run [`supabase/tests/post_migration_verification.sql`](./tests/post_migration_verification.sql).
+   *Confirm all 28 checks pass.*
+4. **Step 4 (Manual Account Repairs, if needed)**:
+   If the verification script identifies historical anomalies, apply the targeted repair blocks in [`supabase/manual_repairs.sql`](./manual_repairs.sql).
+5. **Step 5 (Admin Provisioning)**:
+   Run [`supabase/provision_admin_amol.sql`](./provision_admin_amol.sql) with explicit UUID verification.
 
+---
+
+## 4. How to Approve a Test Teacher Account Securely
+
+In accordance with our **Administrative Approval** security model, Teacher privileges are granted only by authorized administrators:
+
+### Method 1: Using the Callable Admin RPC Function (Recommended)
+An authenticated Administrator can invoke:
 ```sql
--- 1. Verify table definition and RLS status
-SELECT tablename, rowsecurity 
-FROM pg_tables 
-WHERE schemaname = 'public' AND tablename = 'profiles';
-
--- 2. Verify active RLS policies
-SELECT policyname, permissive, roles, cmd, qual, with_check 
-FROM pg_policies 
-WHERE schemaname = 'public' AND tablename = 'profiles';
-
--- 3. Verify triggers attached to auth.users and public.profiles
-SELECT tgname, relname 
-FROM pg_trigger t
-JOIN pg_class c ON t.tgrelid = c.oid
-WHERE c.relname IN ('users', 'profiles');
+SELECT public.admin_approve_teacher('<TARGET_USER_UUID>');
 ```
+This safely locks the user's profile and pending request, verifies uniqueness, updates the request to `'approved'`, and sets the profile to `role = 'teacher'` with `is_approved = true`.
 
----
-
-## 6. How to Approve a Test Teacher Account Securely
-
-In accordance with our **Administrative Approval** security model, Teacher privileges are never granted from client metadata. To approve a Teacher:
-
-1. Have the user register through the AttendAI registration page (`/register`). They will receive `role: student` and `is_approved: false`.
-2. Go to the **Supabase Dashboard** -> **Table Editor** -> **public.profiles**.
-3. Locate the row corresponding to the teacher's email address.
-4. Change `role` from `student` to `teacher`.
-5. Change `is_approved` from `false` to `true`.
-6. Click **Save**.
-7. When the user logs in or reloads their page, `AuthContext` will immediately load `role = 'teacher'` and `isApproved = true`.
-
-Alternatively, run this SQL query in the SQL Editor:
+To reject a pending applicant with an optional reason:
 ```sql
-UPDATE public.profiles 
-SET role = 'teacher', is_approved = true, updated_at = NOW()
-WHERE id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
+SELECT public.admin_reject_teacher(
+    '<TARGET_USER_UUID>', 
+    'Incomplete teaching credential documentation submitted.'
+);
 ```
+
+### Method 2: Manual Database Synchronization
+If performing manual testing in the Supabase Dashboard:
+1. Locate the row in `public.teacher_registration_requests` for the user and change `status` from `'pending'` to `'approved'`.
+2. Locate the row in `public.profiles` for the user and change `role` to `'teacher'` and `is_approved` to `true`.
+3. When the user logs in, `AuthContext` will load their approved faculty status.
 
 ---
 
-## 8. Milestone 8.7: Teacher Registration Requests & Approval Workflow
+## 5. Security Safeguards
 
-The `public.teacher_registration_requests` table stores requests from educators applying for the Teacher role:
-
-| Column | Type | Default | Description |
-|---|---|---|---|
-| `id` | `uuid` | Primary Key | Auto-generated UUID. |
-| `user_id` | `uuid` | Foreign Key | References `auth.users(id)` with `ON DELETE CASCADE`. |
-| `status` | `text` | `'pending'` | Status constraint: `pending`, `approved`, or `rejected`. |
-| `created_at` | `timestamptz` | `NOW()` | Request submission timestamp. |
-| `updated_at` | `timestamptz` | `NOW()` | Timestamp refreshed on administrative update. |
-
-### Security Safeguards
-- **Unique Pending Request Constraint**: The partial unique index `uq_teacher_pending_requests` prevents duplicate pending requests for the same user.
-- **Client Modification Prohibition**: `UPDATE` and `DELETE` on `teacher_registration_requests` are revoked for `authenticated`. The `trigger_prevent_teacher_request_tampering` trigger raises a PostgreSQL exception if any client tries to modify status.
-- **Admin Approval SQL**:
-  To approve a pending teacher request:
-  ```sql
-  -- Step 1: Mark request as approved
-  UPDATE public.teacher_registration_requests
-  SET status = 'approved', updated_at = NOW()
-  WHERE user_id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
-
-  -- Step 2: Elevate user profile to teacher role and approved status
-  UPDATE public.profiles
-  SET role = 'teacher', is_approved = true, updated_at = NOW()
-  WHERE id = (SELECT id FROM auth.users WHERE email = 'teacher@attendai.edu');
-  ```
-  To reject a pending teacher request:
-  ```sql
-  UPDATE public.teacher_registration_requests
-  SET status = 'rejected', updated_at = NOW()
-  WHERE user_id = (SELECT id FROM auth.users WHERE email = 'applicant@attendai.edu');
-  ```
-
-
-To verify that ordinary users cannot elevate their role or approve themselves via the client API, execute this test in the browser console while signed in as a normal student:
-
-```javascript
-// Test 1: Attempt to elevate role to teacher
-const { data, error } = await supabase
-  .from('profiles')
-  .update({ role: 'teacher' })
-  .eq('id', (await supabase.auth.getUser()).data.user.id);
-
-console.log('Role tamper result:', error ? 'Blocked safely: ' + error.message : 'FAILED (tamper succeeded)');
-
-// Test 2: Attempt to self-approve
-const { error: approveError } = await supabase
-  .from('profiles')
-  .update({ is_approved: true })
-  .eq('id', (await supabase.auth.getUser()).data.user.id);
-
-console.log('Approve tamper result:', approveError ? 'Blocked safely: ' + approveError.message : 'FAILED (tamper succeeded)');
-```
-Both queries will fail with PostgreSQL RLS violation / permission denied exceptions.
-
+- **Row Level Security (RLS)**: Enforced on both `profiles` and `teacher_registration_requests`. Users can view only their own records.
+- **Client Mutation Revocation**: Direct `INSERT`, `UPDATE`, and `DELETE` on `teacher_registration_requests` are revoked for client roles.
+- **Invoker Anti-Tampering Triggers**: Direct client attempts to alter roles or approval flags fail with PostgreSQL security exceptions.
+- **Admin Function Fail-Closed Gates**: Non-admin callers, unauthenticated callers, or calls targeting existing admins, approved teachers, or active students are immediately rejected.

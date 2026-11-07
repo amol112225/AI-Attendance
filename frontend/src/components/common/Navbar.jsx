@@ -26,18 +26,18 @@ export function Navbar({
   onGetStartedClick,
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [prevPathname, setPrevPathname] = useState('/');
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, user, profile, role, isApproved, teacherRequest, logout } = useAuth();
 
-  // Reset mobile menu if pathname changes during navigation
-  if (location.pathname !== prevPathname) {
-    setPrevPathname(location.pathname);
-    if (isMobileMenuOpen) {
+  // Auto-close mobile menu on browser history navigation
+  useEffect(() => {
+    const handlePopState = () => {
       setIsMobileMenuOpen(false);
-    }
-  }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Close mobile menu on Escape key press
   useEffect(() => {

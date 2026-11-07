@@ -9,6 +9,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
+import { config } from '../utils/config.js';
 
 /**
  * Maps Supabase auth error codes and messages to clean, user-friendly text.
@@ -219,26 +220,79 @@ export async function submitTeacherRegistrationRequest(userId) {
 }
 
 /**
+ * Classifies a Supabase PostgREST error into an actionable diagnostic category.
+ * @param {Error|Object|null} error
+ * @param {any} data
+ * @returns {'TABLE_NOT_FOUND'|'RECORD_NOT_FOUND'|'PERMISSION_DENIED'|'NETWORK_ERROR'|'CONFIG_ERROR'|'QUERY_ERROR'|null}
+ */
+export function classifySupabaseError(error, data = null) {
+  if (!isSupabaseConfigured()) {
+    return 'CONFIG_ERROR';
+  }
+  if (!error) {
+    return data === null ? 'RECORD_NOT_FOUND' : null;
+  }
+
+  const message = String(error.message || '');
+  const code = String(error.code || '');
+  const status = Number(error.status || (code === '404' ? 404 : 0));
+
+  if (
+    status === 404 ||
+    code === 'PGRST200' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist') ||
+    message.includes('42P01')
+  ) {
+    return 'TABLE_NOT_FOUND';
+  }
+
+  if (
+    status === 403 ||
+    code === '42501' ||
+    message.includes('permission denied') ||
+    message.includes('violates row-level security')
+  ) {
+    return 'PERMISSION_DENIED';
+  }
+
+  if (
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('network')
+  ) {
+    return 'NETWORK_ERROR';
+  }
+
+  return 'QUERY_ERROR';
+}
+
+/**
  * Query the latest teacher registration request status for an authenticated user.
  * Milestone 8.7: Teacher Registration Status
  *
  * @param {string} userId - UUID of the authenticated user
- * @returns {Promise<{request: Object|null, error: Error|null}>}
+ * @returns {Promise<{request: Object|null, error: Error|null, errorType: string|null}>}
  */
 export async function getTeacherRegistrationRequest(userId) {
   if (!isSupabaseConfigured() || !userId) {
-    return { request: null, error: null };
+    return {
+      request: null,
+      error: !isSupabaseConfigured() ? new Error('Authentication service is unconfigured.') : null,
+      errorType: !isSupabaseConfigured() ? 'CONFIG_ERROR' : null,
+    };
   }
 
   const { data, error } = await supabase
     .from('teacher_registration_requests')
-    .select('id, user_id, status, created_at, updated_at')
+    .select('id, user_id, status, rejection_reason, created_at, updated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  return { request: data || null, error };
+  const errorType = classifySupabaseError(error, data);
+  return { request: data || null, error, errorType };
 }
 
 /**
@@ -314,11 +368,15 @@ export async function getUser() {
  * Relies strictly on Supabase RLS policies (auth.uid() = id).
  *
  * @param {string} userId - UUID of the authenticated user
- * @returns {Promise<{profile: Object|null, error: Error|null}>}
+ * @returns {Promise<{profile: Object|null, error: Error|null, errorType: string|null}>}
  */
 export async function getUserProfile(userId) {
   if (!isSupabaseConfigured() || !userId) {
-    return { profile: null, error: null };
+    return {
+      profile: null,
+      error: !isSupabaseConfigured() ? new Error('Authentication service is unconfigured.') : null,
+      errorType: !isSupabaseConfigured() ? 'CONFIG_ERROR' : null,
+    };
   }
 
   const { data, error } = await supabase
@@ -327,7 +385,8 @@ export async function getUserProfile(userId) {
     .eq('id', userId)
     .maybeSingle();
 
-  return { profile: data || null, error };
+  const errorType = classifySupabaseError(error, data);
+  return { profile: data || null, error, errorType };
 }
 
 /**
@@ -421,16 +480,53 @@ export async function authenticateTeacher({ email, password }) {
   }
 
   // 2. Fetch authoritative database profile
-  const { profile, error: profileError } = await getUserProfile(userId);
+  const { profile, error: profileError, errorType } = await getUserProfile(userId);
+
+  // Demo approved teacher bypass: when profiles table is unavailable and the email
+  // matches the configured demo teacher account, grant full approved-teacher access.
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const isDemoTeacher =
+    config.demoTeacherEmail &&
+    cleanEmail === config.demoTeacherEmail.toLowerCase();
+
+  if ((profileError || !profile) && isDemoTeacher && errorType === 'TABLE_NOT_FOUND') {
+    // Grant approved teacher session without database profile row
+    const TEACHER_ROLE = 'teacher';
+    const syntheticProfile = {
+      id: userId,
+      full_name:
+        data?.user?.user_metadata?.full_name ||
+        cleanEmail.split('@')[0] ||
+        'AttendAI Faculty',
+      role: TEACHER_ROLE,
+      is_approved: true,
+      created_at: data?.user?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    return {
+      data,
+      error: null,
+      outcome: TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER,
+      profile: syntheticProfile,
+      message: 'Teacher authenticated successfully.',
+    };
+  }
 
   // Case F: Missing profile or database error
   if (profileError || !profile) {
     await logoutUser();
+    let diagnosticMsg = 'Unable to verify account profile in database. Access denied.';
+    if (errorType === 'TABLE_NOT_FOUND') {
+      diagnosticMsg =
+        'Database setup required: The user profiles table was not found in Supabase (HTTP 404). Please apply the AttendAI database migration in your Supabase SQL Editor.';
+    } else if (errorType === 'NETWORK_ERROR') {
+      diagnosticMsg = 'Unable to connect to the Supabase database. Please check your internet connection.';
+    }
     return {
       data: null,
       error: profileError || new Error('Profile record not found in database.'),
       outcome: TEACHER_LOGIN_OUTCOMES.PROFILE_ERROR,
-      message: 'Unable to verify account profile in database. Access denied.',
+      message: diagnosticMsg,
     };
   }
 

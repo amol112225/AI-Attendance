@@ -8,9 +8,18 @@
 -- 3. Revokes direct client INSERT on teacher_registration_requests (trigger-only creation).
 -- 4. Corrects privilege escalation triggers to SECURITY INVOKER checking effective role current_user.
 -- 5. Implements fail-closed handle_new_user() with explicit quarantine for ambiguous metadata.
--- 6. Implements concurrency-safe, fail-closed admin_approve_teacher() & admin_reject_teacher().
+-- 6. Implements concurrency-safe, fail-closed admin_approve_teacher() & admin_reject_teacher()
+--    with strict target validation (cannot modify admin, approved teacher, or active student;
+--    validates pending request existence and uniqueness).
 -- 7. Audits and tightens all privileges from PUBLIC, anon, and authenticated.
--- 8. Executes safe, non-destructive backfill for unprofiled accounts without broad approval.
+-- 8. Executes audited, safe backfill with explicit reconciliation rules:
+--    - Historical approved requests backfilled with role = teacher, is_approved = true.
+--    - Historical rejected requests backfilled with role = student, is_approved = true (never recreated as pending).
+--    - Active pending teacher applicants backfilled with role = teacher, is_approved = false.
+--    - Clear students backfilled with role = student, is_approved = true.
+--    - Ambiguous accounts quarantined with is_approved = false (never silently approved).
+--    - Existing profiles strictly preserved (ON CONFLICT DO NOTHING).
+-- 9. PostgREST schema cache reload.
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -43,10 +52,62 @@ BEGIN
 END$$;
 
 -- ------------------------------------------------------------------------------
--- 2. Schema Repair & Table Structure
+-- 2. Schema Structure Verification & Idempotent Setup
 -- ------------------------------------------------------------------------------
+-- Ensure public.profiles table exists
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    role public.user_role NOT NULL DEFAULT 'student',
+    is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profiles_is_approved ON public.profiles(is_approved);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Ensure public.teacher_registration_requests table exists
+CREATE TABLE IF NOT EXISTS public.teacher_registration_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason TEXT DEFAULT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::TEXT, NOW())
+);
+
+-- Idempotency repair: Ensure rejection_reason column exists if table was previously created
 ALTER TABLE public.teacher_registration_requests 
     ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_teacher_requests_user ON public.teacher_registration_requests(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_teacher_pending_requests 
+    ON public.teacher_registration_requests(user_id) 
+    WHERE status = 'pending';
+
+ALTER TABLE public.teacher_registration_requests ENABLE ROW LEVEL SECURITY;
+
+-- Base RLS policies for profiles: authenticated users can view own profile and update full_name
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile"
+    ON public.profiles
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update own profile name" ON public.profiles;
+CREATE POLICY "Users can update own profile name"
+    ON public.profiles
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
+
+GRANT SELECT, UPDATE(full_name) ON public.profiles TO authenticated;
+REVOKE ALL ON TABLE public.profiles FROM anon;
 
 -- ------------------------------------------------------------------------------
 -- 3. Trigger-Only Request Creation & RLS Hardening on teacher_registration_requests
@@ -259,13 +320,16 @@ DECLARE
     caller_uid UUID;
     caller_role TEXT;
     is_admin BOOLEAN;
+    v_target_role public.user_role;
+    v_target_is_approved BOOLEAN;
+    v_pending_count INT;
     locked_request_id UUID;
     v_rows_updated INT;
 BEGIN
     caller_uid := auth.uid();
     caller_role := auth.role();
 
-    -- Strict fail-closed caller check using IS DISTINCT FROM
+    -- 1. Strict fail-closed caller check using IS DISTINCT FROM
     IF caller_uid IS NULL OR caller_role IS DISTINCT FROM 'authenticated' THEN
         RAISE EXCEPTION 'Access denied: Caller must be an authenticated user.';
     END IF;
@@ -279,8 +343,19 @@ BEGIN
         RAISE EXCEPTION 'Access denied: Caller is not an authorized administrator.';
     END IF;
 
-    -- Lock target profile
-    PERFORM 1 FROM public.profiles 
+    -- 2. Validate target_user_id parameter
+    IF target_user_id IS NULL THEN
+        RAISE EXCEPTION 'Validation error: target_user_id cannot be null.';
+    END IF;
+
+    IF target_user_id = caller_uid THEN
+        RAISE EXCEPTION 'Access denied: Administrator cannot approve their own account.';
+    END IF;
+
+    -- 3. Lock target profile and validate applicant status
+    SELECT role, is_approved 
+    INTO v_target_role, v_target_is_approved
+    FROM public.profiles 
     WHERE id = target_user_id 
     FOR UPDATE;
 
@@ -288,17 +363,47 @@ BEGIN
         RAISE EXCEPTION 'Target user profile not found for user ID: %', target_user_id;
     END IF;
 
-    -- Lock target pending request to serialize concurrent operations
-    SELECT id INTO locked_request_id
-    FROM public.teacher_registration_requests
-    WHERE user_id = target_user_id AND status = 'pending'
-    FOR UPDATE;
-
-    IF locked_request_id IS NULL THEN
-        RAISE EXCEPTION 'No pending teacher registration request found for user ID: %', target_user_id;
+    -- Safeguard: Do not allow approval to change an administrator
+    IF v_target_role = 'admin' THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is an administrator and cannot be modified by teacher approval.';
     END IF;
 
-    -- Atomic update: Set request to approved
+    -- Safeguard: Do not allow approval to change an already approved teacher
+    IF v_target_role = 'teacher' AND v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is already an approved teacher.';
+    END IF;
+
+    -- Safeguard: Do not allow approval to change an unrelated active student
+    IF v_target_role = 'student' AND v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is an active student and cannot be modified by teacher approval.';
+    END IF;
+
+    -- Safeguard: Target profile must not be already approved
+    IF v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user profile is already approved.';
+    END IF;
+
+    -- 4. Validate existence and uniqueness of the pending teacher request
+    SELECT COUNT(*), MIN(id)
+    INTO v_pending_count, locked_request_id
+    FROM public.teacher_registration_requests
+    WHERE user_id = target_user_id AND status = 'pending';
+
+    IF v_pending_count = 0 THEN
+        RAISE EXCEPTION 'Validation error: No pending teacher registration request found for user ID: %', target_user_id;
+    END IF;
+
+    IF v_pending_count > 1 THEN
+        RAISE EXCEPTION 'Data integrity error: Multiple pending teacher registration requests found for user ID: % (count: %). Manual reconciliation required.', target_user_id, v_pending_count;
+    END IF;
+
+    -- Lock target pending request row to serialize concurrent operations
+    PERFORM 1
+    FROM public.teacher_registration_requests
+    WHERE id = locked_request_id AND status = 'pending'
+    FOR UPDATE;
+
+    -- 5. Atomic update: Set request to approved
     UPDATE public.teacher_registration_requests
     SET status = 'approved',
         updated_at = TIMEZONE('utc'::TEXT, NOW())
@@ -309,7 +414,7 @@ BEGIN
         RAISE EXCEPTION 'Concurrency error: Expected 1 request update, affected %', v_rows_updated;
     END IF;
 
-    -- Atomic update: Set profile to teacher and approved
+    -- 6. Atomic update: Set profile to teacher and approved
     UPDATE public.profiles
     SET role = 'teacher'::public.user_role,
         is_approved = TRUE,
@@ -337,6 +442,9 @@ DECLARE
     caller_uid UUID;
     caller_role TEXT;
     is_admin BOOLEAN;
+    v_target_role public.user_role;
+    v_target_is_approved BOOLEAN;
+    v_pending_count INT;
     locked_request_id UUID;
     v_rows_updated INT;
     cleaned_reason TEXT;
@@ -344,7 +452,7 @@ BEGIN
     caller_uid := auth.uid();
     caller_role := auth.role();
 
-    -- Strict fail-closed caller check using IS DISTINCT FROM
+    -- 1. Strict fail-closed caller check using IS DISTINCT FROM
     IF caller_uid IS NULL OR caller_role IS DISTINCT FROM 'authenticated' THEN
         RAISE EXCEPTION 'Access denied: Caller must be an authenticated user.';
     END IF;
@@ -358,8 +466,19 @@ BEGIN
         RAISE EXCEPTION 'Access denied: Caller is not an authorized administrator.';
     END IF;
 
-    -- Lock target profile
-    PERFORM 1 FROM public.profiles 
+    -- 2. Validate target_user_id parameter
+    IF target_user_id IS NULL THEN
+        RAISE EXCEPTION 'Validation error: target_user_id cannot be null.';
+    END IF;
+
+    IF target_user_id = caller_uid THEN
+        RAISE EXCEPTION 'Access denied: Administrator cannot reject their own account.';
+    END IF;
+
+    -- 3. Lock target profile and validate applicant status
+    SELECT role, is_approved 
+    INTO v_target_role, v_target_is_approved
+    FROM public.profiles 
     WHERE id = target_user_id 
     FOR UPDATE;
 
@@ -367,19 +486,49 @@ BEGIN
         RAISE EXCEPTION 'Target user profile not found for user ID: %', target_user_id;
     END IF;
 
-    -- Lock target pending request
-    SELECT id INTO locked_request_id
-    FROM public.teacher_registration_requests
-    WHERE user_id = target_user_id AND status = 'pending'
-    FOR UPDATE;
-
-    IF locked_request_id IS NULL THEN
-        RAISE EXCEPTION 'No pending teacher registration request found for user ID: %', target_user_id;
+    -- Safeguard: Do not allow rejection to change an administrator
+    IF v_target_role = 'admin' THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is an administrator and cannot be modified by teacher rejection.';
     END IF;
+
+    -- Safeguard: Do not allow rejection to change an already approved teacher
+    IF v_target_role = 'teacher' AND v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is already an approved teacher.';
+    END IF;
+
+    -- Safeguard: Do not allow rejection to change an unrelated active student
+    IF v_target_role = 'student' AND v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user is an active student and cannot be modified by teacher rejection.';
+    END IF;
+
+    -- Safeguard: Target profile must not be already approved
+    IF v_target_is_approved = TRUE THEN
+        RAISE EXCEPTION 'Operation rejected: Target user profile is already approved.';
+    END IF;
+
+    -- 4. Validate existence and uniqueness of the pending teacher request
+    SELECT COUNT(*), MIN(id)
+    INTO v_pending_count, locked_request_id
+    FROM public.teacher_registration_requests
+    WHERE user_id = target_user_id AND status = 'pending';
+
+    IF v_pending_count = 0 THEN
+        RAISE EXCEPTION 'Validation error: No pending teacher registration request found for user ID: %', target_user_id;
+    END IF;
+
+    IF v_pending_count > 1 THEN
+        RAISE EXCEPTION 'Data integrity error: Multiple pending teacher registration requests found for user ID: % (count: %). Manual reconciliation required.', target_user_id, v_pending_count;
+    END IF;
+
+    -- Lock target pending request row to serialize concurrent operations
+    PERFORM 1
+    FROM public.teacher_registration_requests
+    WHERE id = locked_request_id AND status = 'pending'
+    FOR UPDATE;
 
     cleaned_reason := NULLIF(TRIM(p_rejection_reason), '');
 
-    -- Atomic update: Mark request rejected with preserved reason
+    -- 5. Atomic update: Mark request rejected with preserved reason
     UPDATE public.teacher_registration_requests
     SET status = 'rejected',
         rejection_reason = cleaned_reason,
@@ -391,7 +540,7 @@ BEGIN
         RAISE EXCEPTION 'Concurrency error: Expected 1 request update, affected %', v_rows_updated;
     END IF;
 
-    -- Atomic update: Set profile to student with is_approved TRUE
+    -- 6. Atomic update: Set profile to student with is_approved TRUE
     -- Allows continued student attendance; permanently blocks from Faculty Portal
     UPDATE public.profiles
     SET role = 'student'::public.user_role,
@@ -418,25 +567,80 @@ REVOKE ALL ON FUNCTION public.admin_reject_teacher(UUID, TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_reject_teacher(UUID, TEXT) TO authenticated;
 
 -- ------------------------------------------------------------------------------
--- 8. Audited, Safe Backfill (Without Broad Approval)
+-- 8. Audited, Reconciled Backfill (Preserves Existing Profiles & Rejection History)
 -- ------------------------------------------------------------------------------
--- Step 8A: Backfill Clear Teacher Applicants (role = teacher, is_approved = FALSE)
+-- Step 8A: Historical Approved Teachers with missing profiles
+-- If a user has an approved request in teacher_registration_requests and no profile,
+-- restore them as an approved teacher.
+INSERT INTO public.profiles (id, full_name, role, is_approved, created_at, updated_at)
+SELECT 
+    u.id,
+    COALESCE(NULLIF(TRIM(u.raw_user_meta_data->>'full_name'), ''), SPLIT_PART(u.email, '@', 1), 'AttendAI Faculty'),
+    'teacher'::public.user_role,
+    TRUE,
+    u.created_at,
+    TIMEZONE('utc'::TEXT, NOW())
+FROM auth.users u
+WHERE EXISTS (
+    SELECT 1 FROM public.teacher_registration_requests trr 
+    WHERE trr.user_id = u.id AND trr.status = 'approved'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM public.teacher_registration_requests trr 
+    WHERE trr.user_id = u.id AND trr.status = 'pending'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Step 8B: Historical Rejected Teachers with missing profiles
+-- Reconcile as approved student (preserving student attendance while request record stays rejected).
+-- NEVER recreate a rejected applicant as an unapproved pending teacher!
 INSERT INTO public.profiles (id, full_name, role, is_approved, created_at, updated_at)
 SELECT 
     u.id,
     COALESCE(NULLIF(TRIM(u.raw_user_meta_data->>'full_name'), ''), SPLIT_PART(u.email, '@', 1), 'AttendAI User'),
+    'student'::public.user_role,
+    TRUE,
+    u.created_at,
+    TIMEZONE('utc'::TEXT, NOW())
+FROM auth.users u
+WHERE EXISTS (
+    SELECT 1 FROM public.teacher_registration_requests trr 
+    WHERE trr.user_id = u.id AND trr.status = 'rejected'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM public.teacher_registration_requests trr 
+    WHERE trr.user_id = u.id AND trr.status IN ('pending', 'approved')
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Step 8C: Active Pending Teacher Applicants with missing profiles
+-- Strictly users who have a pending request, OR explicit requested_role = 'teacher'
+-- AND no existing approved or rejected request.
+INSERT INTO public.profiles (id, full_name, role, is_approved, created_at, updated_at)
+SELECT 
+    u.id,
+    COALESCE(NULLIF(TRIM(u.raw_user_meta_data->>'full_name'), ''), SPLIT_PART(u.email, '@', 1), 'AttendAI Applicant'),
     'teacher'::public.user_role,
     FALSE,
     u.created_at,
     TIMEZONE('utc'::TEXT, NOW())
 FROM auth.users u
 WHERE (
-    LOWER(TRIM(COALESCE(u.raw_user_meta_data->>'requested_role', ''))) = 'teacher'
-    OR EXISTS (SELECT 1 FROM public.teacher_registration_requests trr WHERE trr.user_id = u.id)
+    EXISTS (
+        SELECT 1 FROM public.teacher_registration_requests trr 
+        WHERE trr.user_id = u.id AND trr.status = 'pending'
+    )
+    OR (
+        LOWER(TRIM(COALESCE(u.raw_user_meta_data->>'requested_role', ''))) = 'teacher'
+        AND NOT EXISTS (
+            SELECT 1 FROM public.teacher_registration_requests trr 
+            WHERE trr.user_id = u.id AND trr.status IN ('approved', 'rejected')
+        )
+    )
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Step 8B: Ensure pending request exists for unapproved teacher profiles lacking requests
+-- Step 8D: Ensure pending request exists for unapproved teacher profiles lacking any request
 INSERT INTO public.teacher_registration_requests (user_id, status, rejection_reason, created_at, updated_at)
 SELECT 
     p.id,
@@ -452,7 +656,8 @@ WHERE p.role = 'teacher'
   )
 ON CONFLICT (user_id) WHERE status = 'pending' DO NOTHING;
 
--- Step 8C: Backfill Clear Students (explicit role = student, requested_role empty, no teacher requests)
+-- Step 8E: Clear Students with missing profiles
+-- Explicit role = student, requested_role is empty, and NO records in teacher_registration_requests.
 INSERT INTO public.profiles (id, full_name, role, is_approved, created_at, updated_at)
 SELECT 
     u.id,
@@ -467,8 +672,8 @@ WHERE LOWER(TRIM(COALESCE(u.raw_user_meta_data->>'role', ''))) = 'student'
   AND NOT EXISTS (SELECT 1 FROM public.teacher_registration_requests trr WHERE trr.user_id = u.id)
 ON CONFLICT (id) DO NOTHING;
 
--- Step 8D: Ambiguous Accounts (Missing or conflicting metadata)
--- Quarantined with is_approved = FALSE. Not approved as students.
+-- Step 8F: Ambiguous Accounts (Missing or conflicting metadata) with missing profiles
+-- Quarantined with is_approved = FALSE. NEVER silently approved.
 INSERT INTO public.profiles (id, full_name, role, is_approved, created_at, updated_at)
 SELECT 
     u.id,
@@ -480,3 +685,10 @@ SELECT
 FROM auth.users u
 WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = u.id)
 ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 9. PostgREST Schema Cache Reload
+-- ------------------------------------------------------------------------------
+-- Instruct PostgREST to immediately refresh its schema cache so newly created
+-- tables and columns are instantly reachable via the REST API without 404 errors.
+NOTIFY pgrst, 'reload schema';

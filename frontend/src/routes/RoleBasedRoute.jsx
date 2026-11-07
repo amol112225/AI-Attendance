@@ -30,6 +30,7 @@ export function RoleBasedRoute({
     isApproved,
     profileLoading,
     profileError,
+    profileErrorType,
   } = useAuth();
   const location = useLocation();
 
@@ -49,12 +50,17 @@ export function RoleBasedRoute({
     return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 
-  // 3. Temporary network/query failure retrieving profile
+  // 3. Database / API / Table error retrieving profile
   if (profileError && !profile) {
     return (
       <Navigate
         to={ROUTES.UNAUTHORIZED}
-        state={{ reason: 'error', from: location }}
+        state={{
+          reason: 'error',
+          errorType: profileErrorType || 'QUERY_ERROR',
+          errorMessage: profileError?.message || null,
+          from: location,
+        }}
         replace
       />
     );
@@ -65,7 +71,11 @@ export function RoleBasedRoute({
     return (
       <Navigate
         to={ROUTES.UNAUTHORIZED}
-        state={{ reason: 'no_profile', from: location }}
+        state={{
+          reason: 'no_profile',
+          errorType: 'RECORD_NOT_FOUND',
+          from: location,
+        }}
         replace
       />
     );
