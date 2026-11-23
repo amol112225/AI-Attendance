@@ -19,6 +19,8 @@ export function DashboardSidebar({
   user = null,
   profile = null,
   onLogout,
+  sidebarRef = null,
+  closeButtonRef = null,
 }) {
   const displayName =
     profile?.full_name ||
@@ -30,7 +32,7 @@ export function DashboardSidebar({
   const getDashboardHome = () => {
     if (role === ROLES.TEACHER) return ROUTES.TEACHER_DASHBOARD;
     if (role === ROLES.ADMIN) return ROUTES.ADMIN_DASHBOARD;
-    if (role === ROLES.STUDENT) return ROUTES.STUDENT_DASHBOARD;
+    if (role === ROLES.STUDENT) return ROUTES.STUDENT_ATTENDANCE;
     return ROUTES.DASHBOARD;
   };
 
@@ -43,6 +45,9 @@ export function DashboardSidebar({
 
   return (
     <aside
+      id="dashboard-sidebar"
+      ref={sidebarRef}
+      tabIndex={-1}
       className={`dashboard-sidebar ${isOpen ? 'dashboard-sidebar--open' : ''}`.trim()}
       aria-label="Dashboard Sidebar Navigation"
     >
@@ -52,7 +57,7 @@ export function DashboardSidebar({
           to={getDashboardHome()}
           className="dashboard-sidebar__brand"
           onClick={onClose}
-          aria-label="AttendAI Dashboard Home"
+          aria-label="AttendAI Portal Home"
         >
           <div className="dashboard-sidebar__brand-icon" aria-hidden="true">
             <Cpu size={18} />
@@ -62,6 +67,7 @@ export function DashboardSidebar({
 
         {/* Mobile Close Button */}
         <button
+          ref={closeButtonRef}
           type="button"
           className="dashboard-sidebar__close-btn"
           onClick={onClose}
@@ -92,6 +98,9 @@ export function DashboardSidebar({
           <div className="dashboard-user-info">
             <span className="dashboard-user-name">{displayName}</span>
             <span className="dashboard-user-role">{getRoleLabel()}</span>
+            {user?.email && (
+              <span className="dashboard-user-email">{user.email}</span>
+            )}
           </div>
         </div>
 

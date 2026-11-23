@@ -24,7 +24,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { user, role, isApproved, loading, profileLoading, setAuthSession } = useAuth();
+  const { user, profile, role, isApproved, loading, profileLoading, setAuthSession } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -45,20 +45,24 @@ export function RegisterPage() {
   const [successState, setSuccessState] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  // If already authenticated and not viewing immediate registration success, redirect to dashboard
+  // If already authenticated with a verified profile and not viewing immediate registration success, redirect to dashboard
   useEffect(() => {
-    if (!loading && !profileLoading && user && !successState) {
+    if (!loading && !profileLoading && user && profile && !successState) {
       if (role === 'teacher') {
         if (isApproved) {
           navigate(ROUTES.TEACHER_DASHBOARD, { replace: true });
         } else {
           navigate(ROUTES.TEACHER_STATUS, { replace: true });
         }
-      } else {
+      } else if (role === 'admin') {
+        navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
+      } else if (role === 'student') {
         navigate(ROUTES.STUDENT_DASHBOARD, { replace: true });
+      } else {
+        navigate(ROUTES.DASHBOARD, { replace: true });
       }
     }
-  }, [user, role, isApproved, loading, profileLoading, successState, navigate]);
+  }, [user, profile, role, isApproved, loading, profileLoading, successState, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

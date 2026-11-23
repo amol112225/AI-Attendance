@@ -21,7 +21,6 @@ import {
   getUserProfile,
   getTeacherRegistrationRequest,
 } from '../services/authService';
-import { config } from '../utils/config';
 import { AuthContext } from './authContextDef';
 
 export function AuthProvider({ children }) {
@@ -43,9 +42,9 @@ export function AuthProvider({ children }) {
     userRef.current = user;
   }, [user]);
 
-  // Helper to safely load profile for an authenticated user ID without throwing
-  // Uses userRef and explicit userObj to maintain zero dependencies []
-  const loadProfile = useCallback(async (userId, _userObj = null) => {
+  // Helper to safely load authoritative database profile for an authenticated user ID.
+  // Fails closed (profile = null + error state) when the database record cannot be verified.
+  const loadProfile = useCallback(async (userId) => {
     if (!userId) {
       setProfile(null);
       setProfileError(null);
@@ -60,170 +59,40 @@ export function AuthProvider({ children }) {
       const { profile: loadedProfile, error, errorType } = await getUserProfile(userId);
       if (!error && loadedProfile) {
         // Authoritative database profile found
-        // Ensure student approval is never required, even if database row has is_approved = false
-        const normalizedProfile = {
-          ...loadedProfile,
-          is_approved: loadedProfile.role === 'student' ? true : Boolean(loadedProfile.is_approved),
-        };
-        setProfile(normalizedProfile);
+        setProfile(loadedProfile);
         setProfileError(null);
         setProfileErrorType(null);
-        return normalizedProfile;
+        return loadedProfile;
       }
 
+      let resolvedError = error;
+      let resolvedErrorType = errorType;
+
       // If record is temporarily not found right after registration (database trigger completing),
-      // perform a quick retry after 300ms, but only if error is not TABLE_NOT_FOUND
+      // perform a quick retry after 300ms, unless the table itself is missing
       if (!loadedProfile && errorType !== 'TABLE_NOT_FOUND') {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const retryResult = await getUserProfile(userId);
         if (!retryResult.error && retryResult.profile) {
-          const normalizedProfile = {
-            ...retryResult.profile,
-            is_approved: retryResult.profile.role === 'student' ? true : Boolean(retryResult.profile.is_approved),
-          };
-          setProfile(normalizedProfile);
+          setProfile(retryResult.profile);
           setProfileError(null);
           setProfileErrorType(null);
-          return normalizedProfile;
+          return retryResult.profile;
         }
+        resolvedError = retryResult.error || error;
+        resolvedErrorType = retryResult.errorType || errorType;
       }
 
-      // Resilient Profile Resolution:
-      // When public.profiles is unavailable or missing on Supabase, resolve role from verified session.
-      // Option B mandates that all standard user accounts are registered as Student
-      // and must never require administrative approval.
-      const currentUser = _userObj || userRef.current;
-      const isAdmin =
-        currentUser?.user_metadata?.role === 'admin' ||
-        (currentUser?.email && currentUser.email.toLowerCase() === config.demoAdminEmail.toLowerCase());
-      // Approved teacher by email override (demo/dev teacher account)
-      const isDemoApprovedTeacher =
-        config.demoTeacherEmail &&
-        currentUser?.email &&
-        currentUser.email.toLowerCase() === config.demoTeacherEmail.toLowerCase();
-      const isTeacherApplicant =
-        isDemoApprovedTeacher ||
-        currentUser?.user_metadata?.requested_role === 'teacher';
-
-      if (isAdmin) {
-        const adminProfile = {
-          id: userId,
-          full_name:
-            currentUser?.user_metadata?.full_name ||
-            currentUser?.email?.split('@')[0] ||
-            'System Administrator',
-          role: 'admin',
-          is_approved: true,
-          created_at: currentUser?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(adminProfile);
-        setProfileError(null);
-        setProfileErrorType(null);
-        return adminProfile;
-      }
-
-      if (isTeacherApplicant) {
-        const teacherPendingProfile = {
-          id: userId,
-          full_name:
-            currentUser?.user_metadata?.full_name ||
-            currentUser?.email?.split('@')[0] ||
-            'AttendAI Faculty Applicant',
-          role: 'teacher',
-          // Demo approved teacher gets full access; other applicants remain pending
-          is_approved: isDemoApprovedTeacher ? true : false,
-          created_at: currentUser?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(teacherPendingProfile);
-        setProfileError(null);
-        setProfileErrorType(null);
-        return teacherPendingProfile;
-      }
-
-      // Default: All standard accounts are active, verified Students (Option B)
-      const studentFallbackProfile = {
-        id: userId,
-        full_name:
-          currentUser?.user_metadata?.full_name ||
-          currentUser?.email?.split('@')[0] ||
-          'AttendAI Student',
-        role: 'student',
-        is_approved: true,
-        created_at: currentUser?.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setProfile(studentFallbackProfile);
-      setProfileError(null);
-      setProfileErrorType(null);
-      return studentFallbackProfile;
-    } catch {
-      const currentUser = _userObj || userRef.current;
-      const isAdmin =
-        currentUser?.user_metadata?.role === 'admin' ||
-        (currentUser?.email && currentUser.email.toLowerCase() === config.demoAdminEmail.toLowerCase());
-      // Approved teacher by email override (demo/dev teacher account)
-      const isDemoApprovedTeacher =
-        config.demoTeacherEmail &&
-        currentUser?.email &&
-        currentUser.email.toLowerCase() === config.demoTeacherEmail.toLowerCase();
-      const isTeacherApplicant =
-        isDemoApprovedTeacher ||
-        currentUser?.user_metadata?.requested_role === 'teacher';
-
-      if (isAdmin) {
-        const adminProfile = {
-          id: userId,
-          full_name:
-            currentUser?.user_metadata?.full_name ||
-            currentUser?.email?.split('@')[0] ||
-            'System Administrator',
-          role: 'admin',
-          is_approved: true,
-          created_at: currentUser?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(adminProfile);
-        setProfileError(null);
-        setProfileErrorType(null);
-        return adminProfile;
-      }
-
-      if (isTeacherApplicant) {
-        const teacherPendingProfile = {
-          id: userId,
-          full_name:
-            currentUser?.user_metadata?.full_name ||
-            currentUser?.email?.split('@')[0] ||
-            'AttendAI Faculty Applicant',
-          role: 'teacher',
-          // Demo approved teacher gets full access; other applicants remain pending
-          is_approved: isDemoApprovedTeacher ? true : false,
-          created_at: currentUser?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(teacherPendingProfile);
-        setProfileError(null);
-        setProfileErrorType(null);
-        return teacherPendingProfile;
-      }
-
-      const studentFallbackProfile = {
-        id: userId,
-        full_name:
-          currentUser?.user_metadata?.full_name ||
-          currentUser?.email?.split('@')[0] ||
-          'AttendAI Student',
-        role: 'student',
-        is_approved: true,
-        created_at: currentUser?.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setProfile(studentFallbackProfile);
-      setProfileError(null);
-      setProfileErrorType(null);
-      return studentFallbackProfile;
+      // Fail closed: Never fabricate profiles or fall back to client user_metadata
+      setProfile(null);
+      setProfileError(resolvedError || new Error('User profile record not found in database.'));
+      setProfileErrorType(resolvedErrorType || 'RECORD_NOT_FOUND');
+      return null;
+    } catch (err) {
+      setProfile(null);
+      setProfileError(err instanceof Error ? err : new Error('Failed to verify user profile.'));
+      setProfileErrorType('QUERY_ERROR');
+      return null;
     } finally {
       setProfileLoading(false);
     }
@@ -263,7 +132,7 @@ export function AuthProvider({ children }) {
             setUser(initialSession.user);
             userRef.current = initialSession.user;
             await Promise.all([
-              loadProfile(initialSession.user.id, initialSession.user),
+              loadProfile(initialSession.user.id),
               loadTeacherRequest(initialSession.user.id),
             ]);
           } else {
@@ -305,7 +174,7 @@ export function AuthProvider({ children }) {
         setUser(currentSession.user);
         userRef.current = currentSession.user;
         await Promise.all([
-          loadProfile(currentSession.user.id, currentSession.user),
+          loadProfile(currentSession.user.id),
           loadTeacherRequest(currentSession.user.id),
         ]);
       } else if (event === 'SIGNED_OUT') {
@@ -337,13 +206,15 @@ export function AuthProvider({ children }) {
     if (currentUser?.id) {
       setProfileLoading(true);
       const [profileRes, requestRes] = await Promise.all([
-        loadProfile(currentUser.id, currentUser),
+        loadProfile(currentUser.id),
         loadTeacherRequest(currentUser.id),
       ]);
       loadedProfile = profileRes;
       loadedTeacherRequest = requestRes;
     } else {
       setProfile(null);
+      setProfileError(null);
+      setProfileErrorType(null);
       setTeacherRequest(null);
     }
     setLoading(false);
@@ -354,7 +225,7 @@ export function AuthProvider({ children }) {
   const refreshProfile = useCallback(async () => {
     const currentUser = userRef.current;
     if (currentUser?.id) {
-      return await loadProfile(currentUser.id, currentUser);
+      return await loadProfile(currentUser.id);
     }
     return null;
   }, [loadProfile]);

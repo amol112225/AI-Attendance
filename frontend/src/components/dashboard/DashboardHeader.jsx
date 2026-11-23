@@ -11,6 +11,8 @@ import { ROLES } from '../../routes/accessRules';
 
 export function DashboardHeader({
   onMenuToggle,
+  isMobileSidebarOpen = false,
+  menuToggleButtonRef = null,
   role = null,
   user = null,
   profile = null,
@@ -52,12 +54,15 @@ export function DashboardHeader({
       <div className="dashboard-header__left">
         {/* Mobile Hamburger Toggle Button */}
         <button
+          ref={menuToggleButtonRef}
           type="button"
           className="dashboard-header__toggle-btn"
           onClick={onMenuToggle}
-          aria-label="Toggle navigation drawer"
+          aria-expanded={isMobileSidebarOpen}
+          aria-controls="dashboard-sidebar"
+          aria-label={isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
 
         {/* Breadcrumb / Section Header */}
@@ -81,7 +86,7 @@ export function DashboardHeader({
           aria-label="Sign out of AttendAI"
         >
           <LogOut size={15} aria-hidden="true" />
-          <span style={{ display: 'none' }}>Sign Out</span>
+          <span className="dashboard-header__logout-label">Sign Out</span>
         </button>
       </div>
     </header>

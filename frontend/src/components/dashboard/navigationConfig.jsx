@@ -3,7 +3,7 @@
  * Milestone 9.1: Dashboard Architecture and Shared Layout
  *
  * Requirements:
- * - Student: Dashboard, My Attendance, My Subjects, My Profile
+ * - Student: My Attendance, My Subjects, My Profile
  * - Teacher: Dashboard, My Classes, Attendance Sessions, Attendance Records, My Profile
  * - Admin: Dashboard, User Management, Teacher Approvals, System Overview, My Profile
  */
@@ -26,12 +26,6 @@ import { ROLES } from '../../routes/accessRules';
 
 export const NAVIGATION_CONFIG = {
   [ROLES.STUDENT]: [
-    {
-      label: 'Dashboard',
-      to: ROUTES.STUDENT_DASHBOARD,
-      icon: <LayoutDashboard size={18} aria-hidden="true" />,
-      end: true,
-    },
     {
       label: 'My Attendance',
       to: ROUTES.STUDENT_ATTENDANCE,

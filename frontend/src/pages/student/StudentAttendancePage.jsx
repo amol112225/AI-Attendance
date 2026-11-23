@@ -158,7 +158,7 @@ export function StudentAttendancePage() {
         <>
           {/* 1. Overall Attendance Hero Spotlight Card */}
           <section aria-labelledby="sp-attendance-spotlight-title">
-            <h2 id="sp-attendance-spotlight-title" style={{ display: 'none' }}>
+            <h2 id="sp-attendance-spotlight-title" className="sr-only">
               Attendance Overview
             </h2>
             <div className="sp-attendance-hero">

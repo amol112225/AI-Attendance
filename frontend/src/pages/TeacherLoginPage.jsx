@@ -132,7 +132,10 @@ export function TeacherLoginPage() {
         }
         const from = location.state?.from?.pathname;
         const destination =
-          from && from !== ROUTES.TEACHER_LOGIN && from !== ROUTES.LOGIN
+          from &&
+          from !== ROUTES.TEACHER_LOGIN &&
+          from !== ROUTES.LOGIN &&
+          from !== ROUTES.UNAUTHORIZED
             ? from
             : ROUTES.TEACHER_DASHBOARD;
         navigate(destination, { replace: true });

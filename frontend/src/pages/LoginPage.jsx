@@ -134,15 +134,17 @@ export function LoginPage() {
       if (data?.session) {
         const authState = await setAuthSession(data.session);
         const resolvedProfile = authState?.profile;
-        const currentUser = data.session.user;
-        const metaRole = currentUser?.user_metadata?.role;
-        const metaRequestedRole = currentUser?.user_metadata?.requested_role;
 
-        const userRole =
-          resolvedProfile?.role ||
-          (metaRequestedRole === 'teacher' ? 'teacher' : (metaRole || 'student'));
+        // Fail closed when database profile or role is missing; delegate to RoleDashboardRedirect -> /unauthorized
+        if (!resolvedProfile?.role) {
+          navigate(ROUTES.DASHBOARD, { replace: true });
+          return;
+        }
+
+        const from = location.state?.from?.pathname;
+        const userRole = resolvedProfile.role;
         const approvedStatus =
-          userRole === 'teacher' ? Boolean(resolvedProfile?.is_approved) : true;
+          userRole === 'teacher' ? Boolean(resolvedProfile.is_approved) : true;
         const destination =
           from &&
           from !== ROUTES.LOGIN &&
@@ -150,7 +152,8 @@ export function LoginPage() {
           from !== ROUTES.TEACHER_LOGIN &&
           from !== ROUTES.TEACHER_REGISTER &&
           from !== ROUTES.ROOT &&
-          from !== ROUTES.DASHBOARD
+          from !== ROUTES.DASHBOARD &&
+          from !== ROUTES.UNAUTHORIZED
             ? from
             : getRoleDashboardPath({
                 role: userRole,
@@ -202,10 +205,12 @@ export function LoginPage() {
                   type="button"
                   onClick={() =>
                     navigate(
-                      getRoleDashboardPath({
-                        role: profile?.role || 'student',
-                        isApproved,
-                      })
+                      profile?.role
+                        ? getRoleDashboardPath({
+                            role: profile.role,
+                            isApproved,
+                          })
+                        : ROUTES.DASHBOARD
                     )
                   }
                 >

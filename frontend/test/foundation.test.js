@@ -3177,16 +3177,20 @@ const m95_navConfigPath = path.join(srcDir, 'components', 'dashboard', 'navigati
 assert.ok(fs.existsSync(m95_navConfigPath), 'navigationConfig.jsx must exist');
 const m95_navContent = fs.readFileSync(m95_navConfigPath, 'utf8');
 
-// Student Navigation Items
+// Student Navigation Items (exact 3 sections: My Attendance, My Subjects, My Profile)
 assert.ok(m95_navContent.includes("[ROLES.STUDENT]:"), 'Student navigation block must exist');
+const m95_studentNavStart = m95_navContent.indexOf('[ROLES.STUDENT]:');
+const m95_teacherNavStart = m95_navContent.indexOf('[ROLES.TEACHER]:');
+assert.ok(m95_studentNavStart !== -1 && m95_teacherNavStart !== -1, 'Student and Teacher navigation blocks must exist');
+const m95_studentNavBlock = m95_navContent.slice(m95_studentNavStart, m95_teacherNavStart);
+assert.ok(!m95_studentNavBlock.includes('ROUTES.STUDENT_DASHBOARD'), 'Student navigation must contain only the 3 Student Portal sections');
 assert.ok(m95_navContent.includes("label: 'Dashboard'"), 'Dashboard label must exist in navigation config');
-assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_DASHBOARD'), 'Student Dashboard route must be configured');
-assert.ok(m95_navContent.includes("label: 'My Attendance'"), 'My Attendance label must exist');
-assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_ATTENDANCE'), 'Student Attendance route must be configured');
-assert.ok(m95_navContent.includes("label: 'My Subjects'"), 'My Subjects label must exist');
-assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_SUBJECTS'), 'Student Subjects route must be configured');
-assert.ok(m95_navContent.includes("label: 'My Profile'"), 'My Profile label must exist');
-assert.ok(m95_navContent.includes('to: ROUTES.STUDENT_PROFILE'), 'Student Profile route must be configured');
+assert.ok(m95_studentNavBlock.includes("label: 'My Attendance'"), 'My Attendance label must exist');
+assert.ok(m95_studentNavBlock.includes('to: ROUTES.STUDENT_ATTENDANCE'), 'Student Attendance route must be configured');
+assert.ok(m95_studentNavBlock.includes("label: 'My Subjects'"), 'My Subjects label must exist');
+assert.ok(m95_studentNavBlock.includes('to: ROUTES.STUDENT_SUBJECTS'), 'Student Subjects route must be configured');
+assert.ok(m95_studentNavBlock.includes("label: 'My Profile'"), 'My Profile label must exist');
+assert.ok(m95_studentNavBlock.includes('to: ROUTES.STUDENT_PROFILE'), 'Student Profile route must be configured');
 
 // Teacher Navigation Items
 assert.ok(m95_navContent.includes("[ROLES.TEACHER]:"), 'Teacher navigation block must exist');
@@ -3662,4 +3666,53 @@ assert.strictEqual(m31_teacherOnAdminAccess.reason, 'forbidden', 'Teacher access
 assert.strictEqual(m31_getRoleDashboardPath({ role: 'teacher', isApproved: true }), '/teacher/dashboard', 'Approved teacher redirected to teacher dashboard');
 
 console.log('✔ Milestone 9.7 (Approval Fix, AMOL & Preview Mode): All 28 verification checks passed successfully');
+
+// ==============================================================================
+// 32. Task 1: Student Portal Layout, Navigation & Fail-Closed Auth Verification
+// ==============================================================================
+console.log('--- AttendAI Verification Suite (Task 1: Student Portal Layout & Auth Hardening) ---');
+
+// 32.1 Fail-closed AuthContext & authService (no synthetic profiles or metadata fallbacks)
+const t1_authContextContent = fs.readFileSync(path.join(srcDir, 'context', 'AuthContext.jsx'), 'utf8');
+assert.ok(!t1_authContextContent.includes('studentFallbackProfile'), 'AuthContext must NOT fabricate studentFallbackProfile');
+assert.ok(!t1_authContextContent.includes('teacherPendingProfile'), 'AuthContext must NOT fabricate teacherPendingProfile');
+assert.ok(!t1_authContextContent.includes('adminProfile'), 'AuthContext must NOT fabricate adminProfile');
+assert.ok(!t1_authContextContent.includes('user_metadata?.role'), 'AuthContext must NOT grant roles from client user_metadata');
+assert.ok(!t1_authContextContent.includes('user_metadata?.requested_role'), 'AuthContext must NOT derive role from requested_role metadata');
+
+const t1_authServiceContent = fs.readFileSync(path.join(srcDir, 'services', 'authService.js'), 'utf8');
+assert.ok(!t1_authServiceContent.includes('syntheticProfile'), 'authService must NOT synthesize teacher profiles when DB table is missing');
+
+const t1_loginContent = fs.readFileSync(path.join(srcDir, 'pages', 'LoginPage.jsx'), 'utf8');
+assert.ok(!t1_loginContent.includes('metaRole'), 'LoginPage must NOT fall back to user_metadata role');
+assert.ok(!t1_loginContent.includes('metaRequestedRole'), 'LoginPage must NOT fall back to requested_role metadata');
+assert.ok(!t1_loginContent.includes("profile?.role || 'student'"), 'LoginPage must NOT default missing profile role to student');
+
+const t1_regContent = fs.readFileSync(path.join(srcDir, 'pages', 'RegisterPage.jsx'), 'utf8');
+assert.ok(t1_regContent.includes('user && profile && !successState'), 'RegisterPage redirect must require verified profile');
+
+const t1_teacherRegContent = fs.readFileSync(path.join(srcDir, 'pages', 'TeacherRegisterPage.jsx'), 'utf8');
+assert.ok(t1_teacherRegContent.includes('user && profile && !successState'), 'TeacherRegisterPage redirect must require verified profile');
+
+// 32.2 Student Portal Shell Accessibility & Mobile Navigation
+const t1_layoutContent = fs.readFileSync(path.join(srcDir, 'components', 'dashboard', 'DashboardLayout.jsx'), 'utf8');
+assert.ok(t1_layoutContent.includes('dashboard-skip-link'), 'DashboardLayout must render accessible skip link');
+assert.ok(t1_layoutContent.includes('tabIndex={-1}'), 'Main content landmark must be programmatically focusable');
+assert.ok(t1_layoutContent.includes('.inert ='), 'DashboardLayout must apply inert to hidden drawer and covered background content');
+assert.ok(t1_layoutContent.includes('dashboard-mobile-nav'), 'DashboardLayout must render compact mobile navigation for Student Portal');
+
+const t1_headerContent = fs.readFileSync(path.join(srcDir, 'components', 'dashboard', 'DashboardHeader.jsx'), 'utf8');
+assert.ok(t1_headerContent.includes('aria-expanded={isMobileSidebarOpen}'), 'Mobile toggle button must expose aria-expanded state');
+assert.ok(t1_headerContent.includes('aria-controls="dashboard-sidebar"'), 'Mobile toggle button must reference #dashboard-sidebar');
+
+const t1_sidebarContent = fs.readFileSync(path.join(srcDir, 'components', 'dashboard', 'DashboardSidebar.jsx'), 'utf8');
+assert.ok(t1_sidebarContent.includes('id="dashboard-sidebar"'), 'Sidebar must expose #dashboard-sidebar ID');
+
+const t1_dashCss = fs.readFileSync(path.join(srcDir, 'styles', 'dashboard.css'), 'utf8');
+assert.ok(t1_dashCss.includes('.dashboard-skip-link'), 'dashboard.css must style .dashboard-skip-link');
+assert.ok(t1_dashCss.includes('.dashboard-mobile-nav'), 'dashboard.css must style .dashboard-mobile-nav');
+assert.ok(t1_dashCss.includes('100dvh'), 'dashboard.css must use dynamic viewport height units');
+assert.ok(t1_dashCss.includes('overflow-x: clip'), 'dashboard.css must use overflow-x: clip without breaking sticky layout');
+
+console.log('✔ Task 1: All 16 Student Portal Layout & Fail-Closed Auth tests passed successfully');
 console.log('--- All AttendAI Verification Tests Passed! ---');

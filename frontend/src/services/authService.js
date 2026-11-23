@@ -9,7 +9,6 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabaseClient.js';
-import { config } from '../utils/config.js';
 
 /**
  * Maps Supabase auth error codes and messages to clean, user-friendly text.
@@ -240,6 +239,7 @@ export function classifySupabaseError(error, data = null) {
   if (
     status === 404 ||
     code === 'PGRST200' ||
+    code === 'PGRST205' ||
     message.includes('schema cache') ||
     message.includes('does not exist') ||
     message.includes('42P01')
@@ -482,37 +482,7 @@ export async function authenticateTeacher({ email, password }) {
   // 2. Fetch authoritative database profile
   const { profile, error: profileError, errorType } = await getUserProfile(userId);
 
-  // Demo approved teacher bypass: when profiles table is unavailable and the email
-  // matches the configured demo teacher account, grant full approved-teacher access.
-  const cleanEmail = (email || '').trim().toLowerCase();
-  const isDemoTeacher =
-    config.demoTeacherEmail &&
-    cleanEmail === config.demoTeacherEmail.toLowerCase();
-
-  if ((profileError || !profile) && isDemoTeacher && errorType === 'TABLE_NOT_FOUND') {
-    // Grant approved teacher session without database profile row
-    const TEACHER_ROLE = 'teacher';
-    const syntheticProfile = {
-      id: userId,
-      full_name:
-        data?.user?.user_metadata?.full_name ||
-        cleanEmail.split('@')[0] ||
-        'AttendAI Faculty',
-      role: TEACHER_ROLE,
-      is_approved: true,
-      created_at: data?.user?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    return {
-      data,
-      error: null,
-      outcome: TEACHER_LOGIN_OUTCOMES.APPROVED_TEACHER,
-      profile: syntheticProfile,
-      message: 'Teacher authenticated successfully.',
-    };
-  }
-
-  // Case F: Missing profile or database error
+  // Case F: Missing profile or database error (fail closed — never synthesize profiles)
   if (profileError || !profile) {
     await logoutUser();
     let diagnosticMsg = 'Unable to verify account profile in database. Access denied.';
